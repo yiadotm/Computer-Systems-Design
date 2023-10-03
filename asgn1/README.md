@@ -16,10 +16,10 @@ Assignment Details:
 
 - 'get' command has one parameter:  
 > *location* - output file is set to location (if it exists)  
-    > catch error if it does not exist  
+    catch error if it does not exist  
 
 - 'set' command has 3 parameter:  
 > *location* - place where contents are located (if it exists)  
-    > catch error  
-    > *content_length* -  number of bytes  
-    > *contents* - name of file  
+    catch error  
+    *content_length* -  number of bytes  
+    *contents* - name of file  
