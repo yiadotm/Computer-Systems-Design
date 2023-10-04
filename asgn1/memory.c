@@ -63,26 +63,26 @@ int main() {
     }
 
     //"get" option
-    // if (strcmp(str[0], "get") == 0) {
+    if (strcmp(str[0], "get") == 0) {
 
-    //     //check for validity of location
-    //     if (len_arr(str(1)) > PATH_MAX) {
-    //         fprintf(stderr, "Filename is greater than PATH_MAX!\n");
-    //         return 1;            
-    //     }
-    //     if (strchr(str[1], "\0")) {
-    //         fprintf(stderr, "Filename includes NULL character!\n");
-    //         return 1;              
-    //     }
+        //check for validity of location
+        if (len_arr(str(1)) > PATH_MAX) {
+            fprintf(stderr, "Filename is greater than PATH_MAX!\n");
+            return 1;            
+        }
+        if (strchr(str[1], "\0")) {
+            fprintf(stderr, "Filename includes NULL character!\n");
+            return 1;              
+        }
 
-    //     //write the contents of location to STDOUT
-    // }
+        //write the contents of location to STDOUT
+    }
 
     //"set" option
 
-    // if (strcmp(str[0], "set") == 0) {
+    if (strcmp(str[0], "set") == 0) {
         
-    // }
+    }
 
 
     // if (length > 0) {
