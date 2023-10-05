@@ -35,7 +35,6 @@ int main() {
     char** str = malloc(sizeof(char*)* 10);
     char* pch;
     pch = strtok(buffer, "\n");
-    printf("%s\n", pch);
     int count = 0;
     while (pch != NULL) {
         str[count] = pch;
@@ -46,15 +45,26 @@ int main() {
         pch = strtok(NULL, "\n");
 
     }
-    printf("\n");
-    for (int i = 0; i < count; i++) {
-        printf("%s\n", str[i]);
+    // printf("count: %d\n", count);
+    // for (int i = 0; i < count; i++) {
+    //     printf("%s\n", str[i]);
+    // }
+    //check for "get" or "set" and if location is set
+    if (strcmp(str[0], "get") != 0 || strcmp(str[0], "set") != 0 || count <= 1) {
+        fprintf(stderr, "Invalid Command!\n");
+        return 1;
     }
-        // //check for "get" or "set"
-        // if (strcmp(pch, "get") != 0 && strcmp(pch, "set") != 0) {
-        //     fprintf(stderr, "Invalid Command~\n");
-        //     return 1;
-        // }
+
+    //"get" option
+    if (strcmp(str[0], "get") == 0) {
+
+    }
+
+    //"set" option
+
+    if (strcmp(str[0], "set") == 0) {
+        
+    }
 
 
     // if (length > 0) {
