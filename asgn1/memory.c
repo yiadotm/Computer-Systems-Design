@@ -1,50 +1,73 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
 #include <limits.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-//function that either reads or writes the bytes
-int bytes_funct(int file, uint8_t *buf, int nbytes, int opt) {
-    ssize_t curr_num = 0; // number of bytes from the most recent read/write
-    int total = 0; // total number of bytes that have been read/written
-    while (total < nbytes) {
-        //opt == 1 means read, 0 means write
-        if (opt == 1) {
-            curr_num = read(file, buf, nbytes - total);
-        } else {
-            curr_num = write(file, buf, nbytes - total);
-        }
 
-        if ((int) curr_num <= 0) {
+//get function
+int main() {
+    char* buffer = NULL;
+    size_t buffer_size = 0;
+    size_t length = 0;
+    char c;
+    ssize_t bytes_read;
+    int infile = STDIN_FILENO;
+    // int outfile = STDOUT_FILENO;
+    
+    while ((bytes_read = read(infile, &c, 1)) > 0) {
+        if (length >= buffer_size) {
+            // Double the buffer size if needed
+            //code is referenced from ChatGPT
+            buffer_size = (buffer_size == 0) ? 1 : buffer_size * 2;
+            buffer = realloc(buffer, buffer_size);
+            if (buffer == NULL) {
+                fprintf(stderr, "Memory allocation failed");
+                return 1;
+            }
+        }
+        buffer[length++] = c;        
+    }
+    
+    //add the input to the str array
+    char** str = malloc(sizeof(char*)* 10);
+    char* pch;
+    pch = strtok(buffer, "\n");
+    printf("%s\n", pch);
+    int count = 0;
+    while (pch != NULL) {
+        str[count] = pch;
+        count++;
+        if (count == 3) {
             break;
         }
-        total += (int) curr_num;
+        pch = strtok(NULL, "\n");
+
     }
-    return total;
-}
-
-//function that reads the bytes, uses the bytes_funct
-int read_bytes(int infile, uint8_t *buf, int to_read) {
-    return bytes_funct(infile, buf, to_read, 1);
-}
-
-//function that writes the bytes, uses the bytes_funct
-int write_bytes(int outfile, uint8_t *buf, int to_write) {
-    return bytes_funct(outfile, buf, to_write, 0);
-}
-
-int main(int argc, char *argv[]) {
-    int infile = STDIN_FILENO;
-    int outfile = STDOUT_FILENO;
-
-    infile = open(infile, O_RDONLY);
-    //Open infile with open
-    //Print message if error
-    if (infile == -1) {
-        fprintf(stderr, "Error opening input file\n");
-        exit(1);
+    printf("\n");
+    for (int i = 0; i < count; i++) {
+        printf("%s\n", str[i]);
     }
+        // //check for "get" or "set"
+        // if (strcmp(pch, "get") != 0 && strcmp(pch, "set") != 0) {
+        //     fprintf(stderr, "Invalid Command~\n");
+        //     return 1;
+        // }
+
+
+    // if (length > 0) {
+    //     buffer[length] = '\0'; // Null-terminate the string
+    //     printf("You entered: %s\n", buffer);
+    // } else {
+    //     printf("No input provided.\n");
+    // }
+
+    free(buffer);
+    //read the inputs separated by '\n' 
+    //check if first input is 'get' or 'set' (case-sensitive)
+        //check for invalid commands
 
     return 0;
 }
