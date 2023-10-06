@@ -1,8 +1,8 @@
-SHELL := /bin/sh
-CC = clang
-CFLAGS = S=-Wall -Wextra -Werror -pedantic
-LIBFLAGS = -lm
-EXECBIN  = memory format
+SHELL := /bin/sh  
+CC = clang  
+CFLAGS = -Wall -Wextra -Werror -pedantic  
+LIBFLAGS = -lm  
+EXECBIN  = memory format  
 
 
 SOURCES = $(wildcard *.c)

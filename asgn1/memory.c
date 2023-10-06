@@ -22,7 +22,7 @@ int main() {
     char c;
     ssize_t bytes_read;
     int infile = STDIN_FILENO;
-    // int outfile = STDOUT_FILENO;
+    int outfile = STDOUT_FILENO;
     
     while ((bytes_read = read(infile, &c, 1)) > 0) {
         if (length >= buffer_size) {
@@ -52,15 +52,20 @@ int main() {
         pch = strtok(NULL, "\n");
 
     }
-    printf("count: %d\n", count);
+    // printf("count: %d\n", count);
     // for (int i = 0; i < count; i++) {
     //     printf("%s\n", str[i]);
     // }
     //check for "get" or "set" and if location is set
-    if (strcmp(str[0], "get") != 0 || strcmp(str[0], "set") != 0 || count <= 1) {
+    if (strcmp(str[0], "get") != 0 && strcmp(str[0], "set") != 0) {
         fprintf(stderr, "Invalid Command!\n");
-        return 1;
+        return 1;        
     }
+    else if (count <= 1) {
+        fprintf(stderr, "Invalid Command!\n");
+        return 1;        
+    }
+
 
     //"get" option
     if (strcmp(str[0], "get") == 0) {
@@ -70,19 +75,43 @@ int main() {
             fprintf(stderr, "Filename is greater than PATH_MAX!\n");
             return 1;            
         }
-        if (strchr(str[1], '\0')) {
-            fprintf(stderr, "Filename includes NULL character!\n");
-            return 1;              
+        // if (strchr(str[1], '\0')) {
+        //     fprintf(stderr, "Filename includes NULL character!\n");
+        //     return 1;              
+        // }
+
+        //open the file to read
+        int file = open(str[1], O_RDONLY);
+        if (file == -1) {
+            fprintf(stderr, "Error opening file!");
+            return 1;
         }
 
         //write the contents of location to STDOUT
+        char buff[4096];
+        ssize_t b_read;
+        while ((b_read = read(file, buff, sizeof(buff))) > 0) {
+            ssize_t b_write = write(outfile, buff, b_read);
+            if (b_write == -1) {
+                fprintf(stderr, "Error writing to stdout!");
+                close(file);
+                return 1;
+            }
+        }
+
+        if (b_read == -1) {
+            fprintf(stderr, "Error reading from file");
+            close(file);
+            return 1;
+        }
+        close(file);
     }
 
     //"set" option
 
-    if (strcmp(str[0], "set") == 0) {
+    // if (strcmp(str[0], "set") == 0) {
 
-    }
+    // }
 
 
     // if (length > 0) {

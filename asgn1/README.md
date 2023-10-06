@@ -23,3 +23,19 @@ Assignment Details:
     catch error  
     *content_length* -  number of bytes  
     *contents* - name of file  
+
+
+Questions asked from ChatGPT:  
+how do i get input from stdin without getline in c  
+how do i do that without fgets  
+i cant use any get functions, like getchar  
+how do i write out to stdout in c using the open function  
+how do i write a file to stdout in c without fopen and only the open or write function  
+
+
+
+
+
+
+  
+
