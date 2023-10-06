@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 //function that counts elements in array
-int len_arr(const char* word) {
+int len_arr(const char *word) {
     int length = 0;
     while (word[length] != '\0') {
         length++;
@@ -15,37 +15,37 @@ int len_arr(const char* word) {
     return length;
 }
 int my_write(int infile, int outfile, int bytes) {
-        //write the contents of location to STDOUT
-        //referenced code from ChatGPT
-        char buff[bytes];
-        ssize_t b_read;
-        while ((b_read = read(infile, buff, sizeof(buff))) > 0) {
-            ssize_t b_write = write(outfile, buff, b_read);
-            if (b_write == -1) {
-                fprintf(stderr, "Error writing to stdout\n");
-                close(infile);
-                return 1;
-            }
-        }
-
-        if (b_read == -1) {
-            fprintf(stderr, "Error reading from file\n");
+    //write the contents of location to STDOUT
+    //referenced code from ChatGPT
+    char buff[bytes];
+    ssize_t b_read;
+    while ((b_read = read(infile, buff, sizeof(buff))) > 0) {
+        ssize_t b_write = write(outfile, buff, b_read);
+        if (b_write == -1) {
+            fprintf(stderr, "Error writing to stdout\n");
             close(infile);
             return 1;
         }
+    }
+
+    if (b_read == -1) {
+        fprintf(stderr, "Error reading from file\n");
         close(infile);
-        return 0;
+        return 1;
+    }
+    close(infile);
+    return 0;
 }
 
 int main() {
-    char* buffer = NULL;
+    char *buffer = NULL;
     size_t buffer_size = 0;
     size_t length = 0;
     char c;
     ssize_t bytes_read;
     int infile = STDIN_FILENO;
     int outfile = STDOUT_FILENO;
-    
+
     while ((bytes_read = read(infile, &c, 1)) > 0) {
         if (length >= buffer_size) {
             // Double the buffer size if needed
@@ -57,12 +57,12 @@ int main() {
                 return 1;
             }
         }
-        buffer[length++] = c;        
+        buffer[length++] = c;
     }
-    
+
     //add the input to the str array
-    char** str = malloc(sizeof(char*)* 10);
-    char* pch;
+    char **str = malloc(sizeof(char *) * 10);
+    char *pch;
     pch = strtok(buffer, "\n");
     int count = 0;
     while (pch != NULL) {
@@ -72,7 +72,6 @@ int main() {
             break;
         }
         pch = strtok(NULL, "\n");
-
     }
     // printf("count: %d\n", count);
     // for (int i = 0; i < count; i++) {
@@ -81,14 +80,11 @@ int main() {
     //check for "get" or "set" and if location is set
     if (strcmp(str[0], "get") != 0 && strcmp(str[0], "set") != 0) {
         fprintf(stderr, "Invalid Command\n");
-        return 1;        
-    }
-    else if (count <= 1) {
+        return 1;
+    } else if (count <= 1) {
         fprintf(stderr, "Invalid Command\n");
-        return 1;        
+        return 1;
     }
-
-
 
     //"get" option
     if (strcmp(str[0], "get") == 0) {
@@ -101,11 +97,11 @@ int main() {
         //check for validity of location
         if (len_arr(str[1]) > PATH_MAX) {
             fprintf(stderr, "Filename is greater than PATH_MAX\n");
-            return 1;            
+            return 1;
         }
         // if (strchr(str[1], '\0')) {
         //     fprintf(stderr, "Filename includes NULL character!\n");
-        //     return 1;              
+        //     return 1;
         // }
 
         my_write(file, outfile, 4096);
@@ -123,12 +119,11 @@ int main() {
         //closes stdin before providing content_length bytes
         if (count < 3) {
             //write all the contents to STDOUT
-
         }
 
         //check if content_length is greater than actual length of contents, if it is then just write all the contents
-        ssize_t b_write = write(file, str[3], (size_t)str[2]);
-        
+        ssize_t b_write = write(file, str[3], (size_t) str[2]);
+
         printf("\n");
         for (int i = 0; i < 4; i++) {
             printf("%s\n", str[i]);
@@ -142,9 +137,7 @@ int main() {
         //write "OK" at the end
         printf("OK\n");
         close(file);
-        
     }
-
 
     // if (length > 0) {
     //     buffer[length] = '\0'; // Null-terminate the string
@@ -154,9 +147,9 @@ int main() {
     // }
 
     free(buffer);
-    //read the inputs separated by '\n' 
+    //read the inputs separated by '\n'
     //check if first input is 'get' or 'set' (case-sensitive)
-        //check for invalid commands
+    //check for invalid commands
 
     return 0;
 }
