@@ -2,14 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <limits.h>
+#include <linux/limits.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 //function that counts elements in array
-int len_arr(const char* word[]) {
+int len_arr(const char* word) {
     int length = 0;
-    while (word[length] != NULL) {
+    while (word[length] != '\0') {
         length++;
     }
     return length;
@@ -52,7 +52,7 @@ int main() {
         pch = strtok(NULL, "\n");
 
     }
-    // printf("count: %d\n", count);
+    printf("count: %d\n", count);
     // for (int i = 0; i < count; i++) {
     //     printf("%s\n", str[i]);
     // }
@@ -66,11 +66,11 @@ int main() {
     if (strcmp(str[0], "get") == 0) {
 
         //check for validity of location
-        if (len_arr(str(1)) > PATH_MAX) {
+        if (len_arr(str[1]) > PATH_MAX) {
             fprintf(stderr, "Filename is greater than PATH_MAX!\n");
             return 1;            
         }
-        if (strchr(str[1], "\0")) {
+        if (strchr(str[1], '\0')) {
             fprintf(stderr, "Filename includes NULL character!\n");
             return 1;              
         }
@@ -81,7 +81,7 @@ int main() {
     //"set" option
 
     if (strcmp(str[0], "set") == 0) {
-        
+
     }
 
 
