@@ -14,6 +14,28 @@ int len_arr(const char* word) {
     }
     return length;
 }
+int my_write(int infile, int outfile, int bytes) {
+        //write the contents of location to STDOUT
+        //referenced code from ChatGPT
+        char buff[bytes];
+        ssize_t b_read;
+        while ((b_read = read(infile, buff, sizeof(buff))) > 0) {
+            ssize_t b_write = write(outfile, buff, b_read);
+            if (b_write == -1) {
+                fprintf(stderr, "Error writing to stdout\n");
+                close(infile);
+                return 1;
+            }
+        }
+
+        if (b_read == -1) {
+            fprintf(stderr, "Error reading from file\n");
+            close(infile);
+            return 1;
+        }
+        close(infile);
+        return 0;
+}
 
 int main() {
     char* buffer = NULL;
@@ -31,7 +53,7 @@ int main() {
             buffer_size = (buffer_size == 0) ? 1 : buffer_size * 2;
             buffer = realloc(buffer, buffer_size);
             if (buffer == NULL) {
-                fprintf(stderr, "Memory allocation failed");
+                fprintf(stderr, "Memory allocation failed\n");
                 return 1;
             }
         }
@@ -58,21 +80,27 @@ int main() {
     // }
     //check for "get" or "set" and if location is set
     if (strcmp(str[0], "get") != 0 && strcmp(str[0], "set") != 0) {
-        fprintf(stderr, "Invalid Command!\n");
+        fprintf(stderr, "Invalid Command\n");
         return 1;        
     }
     else if (count <= 1) {
-        fprintf(stderr, "Invalid Command!\n");
+        fprintf(stderr, "Invalid Command\n");
         return 1;        
     }
+
 
 
     //"get" option
     if (strcmp(str[0], "get") == 0) {
-
+        //open the file to read
+        int file = open(str[1], O_RDONLY);
+        if (file == -1) {
+            fprintf(stderr, "Error opening file\n");
+            return 1;
+        }
         //check for validity of location
         if (len_arr(str[1]) > PATH_MAX) {
-            fprintf(stderr, "Filename is greater than PATH_MAX!\n");
+            fprintf(stderr, "Filename is greater than PATH_MAX\n");
             return 1;            
         }
         // if (strchr(str[1], '\0')) {
@@ -80,38 +108,42 @@ int main() {
         //     return 1;              
         // }
 
-        //open the file to read
-        int file = open(str[1], O_RDONLY);
-        if (file == -1) {
-            fprintf(stderr, "Error opening file!");
-            return 1;
-        }
-
-        //write the contents of location to STDOUT
-        char buff[4096];
-        ssize_t b_read;
-        while ((b_read = read(file, buff, sizeof(buff))) > 0) {
-            ssize_t b_write = write(outfile, buff, b_read);
-            if (b_write == -1) {
-                fprintf(stderr, "Error writing to stdout!");
-                close(file);
-                return 1;
-            }
-        }
-
-        if (b_read == -1) {
-            fprintf(stderr, "Error reading from file");
-            close(file);
-            return 1;
-        }
-        close(file);
+        my_write(file, outfile, 4096);
     }
 
     //"set" option
 
-    // if (strcmp(str[0], "set") == 0) {
+    if (strcmp(str[0], "set") == 0) {
+        //open the file to write
+        int file = open(str[1], O_WRONLY | O_TRUNC, 666);
+        if (file == -1) {
+            fprintf(stderr, "Error opening file\n");
+            return 1;
+        }
+        //closes stdin before providing content_length bytes
+        if (count < 3) {
+            //write all the contents to STDOUT
 
-    // }
+        }
+
+        //check if content_length is greater than actual length of contents, if it is then just write all the contents
+        ssize_t b_write = write(file, str[3], (size_t)str[2]);
+        
+        printf("\n");
+        for (int i = 0; i < 4; i++) {
+            printf("%s\n", str[i]);
+        }
+
+        if (b_write == -1) {
+            fprintf(stderr, "Error writing to file\n");
+            close(file);
+            return 1;
+        }
+        //write "OK" at the end
+        printf("OK\n");
+        close(file);
+        
+    }
 
 
     // if (length > 0) {
