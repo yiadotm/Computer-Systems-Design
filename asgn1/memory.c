@@ -130,10 +130,15 @@ int main() {
         if (count < 3) {
             //write all the contents to STDOUT
         }
-        char buff[PATH_MAX];
+        // char buff[PATH_MAX];
         ssize_t b_read;
-        while ((b_read = read(infile, buff, sizeof(buff))) > 0) {
-            ssize_t b_write = write(file, buff, b_read);
+        int num = 0;
+        while ((b_read = read(infile, &c, 1)) > 0) {
+            ssize_t b_write = write(file, &c, b_read);
+            num++;
+            if (num > atoi(str[2])) {
+                break;
+            }
             if (b_write == -1) {
                 fprintf(stderr, "Error writing to stdout\n");
                 close(infile);
