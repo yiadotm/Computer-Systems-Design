@@ -5,6 +5,7 @@
 #include <linux/limits.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 //function that counts elements in array
 int len_arr(const char *word) {
@@ -46,6 +47,8 @@ int main() {
     int infile = STDIN_FILENO;
     int outfile = STDOUT_FILENO;
 
+    //read from STDIN
+    int newline = 0;
     while ((bytes_read = read(infile, &c, 1)) > 0) {
         if (length >= buffer_size) {
             // Double the buffer size if needed
@@ -57,7 +60,13 @@ int main() {
                 return 1;
             }
         }
+        if (c == '\n') {
+            newline++;
+        }
         buffer[length++] = c;
+        if (newline == 3) {
+            break;
+        }
     }
 
     //add the input to the str array
@@ -104,7 +113,8 @@ int main() {
         //     return 1;
         // }
 
-        my_write(file, outfile, 4096);
+        my_write(file, outfile, PATH_MAX);
+        // write(file, "\n", 1);
     }
 
     //"set" option
@@ -120,22 +130,18 @@ int main() {
         if (count < 3) {
             //write all the contents to STDOUT
         }
-
-        //check if content_length is greater than actual length of contents, if it is then just write all the contents
-        ssize_t b_write = write(file, str[3], (size_t) str[2]);
-
-        printf("\n");
-        for (int i = 0; i < 4; i++) {
-            printf("%s\n", str[i]);
-        }
-
-        if (b_write == -1) {
-            fprintf(stderr, "Error writing to file\n");
-            close(file);
-            return 1;
+        char buff[PATH_MAX];
+        ssize_t b_read;
+        while ((b_read = read(infile, buff, sizeof(buff))) > 0) {
+            ssize_t b_write = write(file, buff, b_read);
+            if (b_write == -1) {
+                fprintf(stderr, "Error writing to stdout\n");
+                close(infile);
+                return 1;
+            }
         }
         //write "OK" at the end
-        printf("OK\n");
+        fprintf(stdout, "OK\n");
         close(file);
     }
 
