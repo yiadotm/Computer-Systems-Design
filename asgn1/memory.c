@@ -101,11 +101,13 @@ int main() {
         int file = open(str[1], O_RDONLY);
         if (file == -1) {
             fprintf(stderr, "Error opening file\n");
+            close(file);
             return 1;
         }
         //check for validity of location
         if (len_arr(str[1]) > PATH_MAX) {
             fprintf(stderr, "Filename is greater than PATH_MAX\n");
+            close(file);
             return 1;
         }
         // if (strchr(str[1], '\0')) {
@@ -134,11 +136,12 @@ int main() {
         ssize_t b_read;
         int num = 0;
         while ((b_read = read(infile, &c, 1)) > 0) {
-            ssize_t b_write = write(file, &c, b_read);
-            num++;
-            if (num > atoi(str[2])) {
-                break;
+            ssize_t b_write = 0!;
+            if (num < atoi(str[2])) {
+                b_write = write(file, &c, b_read);
+                num++;
             }
+
             if (b_write == -1) {
                 fprintf(stderr, "Error writing to stdout\n");
                 close(infile);
