@@ -7,15 +7,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <regex.h>
 
-//stackoverflow: https://stackoverflow.com/questions/4553012/checking-if-a-file-is-a-directory-or-just-a-file
-int is_regular_file(const char *path) {
-    struct stat path_stat;
-    stat(path, &path_stat);
-    return S_ISREG(path_stat.st_mode);
-}
+// //stackoverflow: https://stackoverflow.com/questions/4553012/checking-if-a-file-is-a-directory-or-just-a-file
+// int is_regular_file(const char *path) {
+//     struct stat path_stat;
+//     stat(path, &path_stat);
+//     return S_ISREG(path_stat.st_mode);
+// }
 
 //function that counts elements in array
 int len_arr(const char *word) {
@@ -27,15 +28,15 @@ int len_arr(const char *word) {
 }
 int set_write(int infile, int outfile, int content_length) {
     //write the contents of location to STDOUT
-    char buff[512];
-    ssize_t count = 0;
+    uint8_t *buff[512];
+    int count = 0;
     ssize_t b_read = 0, b_write = 0;
     do {
         b_read = read(infile, buff, sizeof(buff));
         if (b_read == -1) {
             fprintf(stderr, "Invalid Command\n");
             close(infile);
-            return 1;
+            exit(1);
         }
         b_write = 0;
         do {
@@ -43,12 +44,12 @@ int set_write(int infile, int outfile, int content_length) {
             if (bytes < 0) {
                 fprintf(stderr, "Invalid Command\n");
                 close(infile);
-                return 1;
+                exit(1);
             }
             b_write += bytes;
             count += bytes;
-        } while (b_write < b_read && count < content_length);
-    } while (count < content_length && b_read > 0 && b_write >= 0);
+        } while (b_write < b_read && count <= content_length);
+    } while (count <= content_length && b_read > 0 && b_write >= 0);
 
     close(infile);
     return 0;
@@ -63,7 +64,7 @@ int get_write(int infile, int outfile, int bytes) {
         if (b_read == -1) {
             fprintf(stderr, "Invalid Command\n");
             close(infile);
-            return 1;
+            exit(1);
         }
         b_write = 0;
         do {
@@ -71,7 +72,7 @@ int get_write(int infile, int outfile, int bytes) {
             if (bytes < 0) {
                 fprintf(stderr, "Invalid Command\n");
                 close(infile);
-                return 1;
+                exit(1);
             }
             b_write += bytes;
         } while (b_write < b_read);
@@ -108,7 +109,7 @@ void read_line(int newlineCount, char *buffer, int infile, size_t length) {
 }
 int flush() {
     ssize_t bytes_read;
-    char c;
+    uint8_t c;
     int flushed = 0;
     while ((bytes_read = read(STDIN_FILENO, &c, 1)) > 0) {
         if (bytes_read > 0) {
@@ -144,17 +145,13 @@ int check_option(char *header, int option) {
 
 int main() {
     char *buffer = malloc(sizeof(char *) * 512);
-
     size_t length = 0;
-    // char c;
-
     int infile = STDIN_FILENO;
     int outfile = STDOUT_FILENO;
 
     read_line(1, buffer, infile, length);
 
     //add the input to the str array
-    char **str = malloc(sizeof(char *) * length);
     char *command;
     command = strtok(buffer, "\n");
 
@@ -175,10 +172,10 @@ int main() {
             return 1;
         }
         char *location = strtok(buffer, "\n");
-        if (!is_regular_file(location)) {
-            fprintf(stderr, "Invalid Command\n");
-            return 1;
-        }
+        // if (!is_regular_file(location)) {
+        //     fprintf(stderr, "Invalid Command\n");
+        //     return 1;
+        // }
         int file = open(location, O_RDONLY);
         if (file == -1) {
             fprintf(stderr, "Invalid Command\n");
@@ -186,12 +183,12 @@ int main() {
             return 1;
         }
         //check for validity of location
-        if (len_arr(location) > PATH_MAX) {
-            fprintf(stderr, "Filename is greater than PATH_MAX.\n");
-            close(file);
-            return 1;
-        }
-        // if (strchr(str[1], '\0')) {
+        // if (len_arr(location) > PATH_MAX) {
+        //     fprintf(stderr, "Filename is greater than PATH_MAX.\n");
+        //     close(file);
+        //     return 1;
+        // }
+        // if (strchr(location, '\0')) {
         //     fprintf(stderr, "Filename includes NULL character!\n");
         //     return 1;
         // }
@@ -199,7 +196,7 @@ int main() {
             fprintf(stderr, "Invalid Command\n");
             return 1;
         }
-        get_write(file, outfile, PATH_MAX);
+        get_write(file, outfile, 512);
 
         write(file, "\n", 1);
     }
@@ -209,21 +206,22 @@ int main() {
     if (strcmp(buffer, "set") == 0) {
         read_line(2, buffer, infile, length);
         if (!check_option(buffer, 1)) {
-            fprintf(stderr, "Invalid Command\n");
+            fprintf(stderr, "Invalid Command1\n");
             return 1;
         }
         char *location = strtok(buffer, "\n");
         char *content_length = strtok(NULL, "\n");
-        if (!is_regular_file(location)) {
-            fprintf(stderr, "Invalid Command\n");
-            return 1;
-        }
+        // if (!is_regular_file(location)) {
+        //     fprintf(stderr, "Invalid Command2\n");
+        //     return 1;
+        // }
         //open the file to write
-        int file = open(location, O_WRONLY | O_TRUNC, 0644);
+        int file = open(location, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (file == -1) {
-            fprintf(stderr, "Invalid Command\n");
+            fprintf(stderr, "Invalid Command3\n");
             return 1;
         }
+
         set_write(infile, file, atoi(content_length));
         //write "OK" at the end
         fprintf(stdout, "OK\n");
@@ -238,10 +236,6 @@ int main() {
     // }
 
     free(buffer);
-    for (int i = 0; i < (int) length; i++) {
-        free(str[i]);
-    }
-    free(str);
 
     return 0;
 }
