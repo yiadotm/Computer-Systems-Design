@@ -187,7 +187,7 @@ int main() {
         }
         //check for validity of location
         if (len_arr(location) > PATH_MAX) {
-            fprintf(stderr, "Filename is greater than PATH_MAX\n");
+            fprintf(stderr, "Filename is greater than PATH_MAX.\n");
             close(file);
             return 1;
         }
