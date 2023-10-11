@@ -6,7 +6,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <regex.h>
+
+//stackoverflow: https://stackoverflow.com/questions/4553012/checking-if-a-file-is-a-directory-or-just-a-file
+int is_regular_file(const char *path) {
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISREG(path_stat.st_mode);
+}
 
 //function that counts elements in array
 int len_arr(const char *word) {
@@ -16,9 +25,37 @@ int len_arr(const char *word) {
     }
     return length;
 }
+int set_write(int infile, int outfile, int content_length) {
+    //write the contents of location to STDOUT
+    char buff[512];
+    ssize_t count = 0;
+    ssize_t b_read = 0, b_write = 0;
+    do {
+        b_read = read(infile, buff, sizeof(buff));
+        if (b_read == -1) {
+            fprintf(stderr, "Invalid Command\n");
+            close(infile);
+            return 1;
+        }
+        b_write = 0;
+        do {
+            size_t bytes = write(outfile, buff + b_write, b_read);
+            if (bytes < 0) {
+                fprintf(stderr, "Invalid Command\n");
+                close(infile);
+                return 1;
+            }
+            b_write += bytes;
+            count += bytes;
+        } while (b_write < b_read && count < content_length);
+    } while (count < content_length && b_read > 0 && b_write >= 0);
+
+    close(infile);
+    return 0;
+}
+
 int get_write(int infile, int outfile, int bytes) {
     //write the contents of location to STDOUT
-    //referenced code from ChatGPT
     char buff[bytes];
     ssize_t b_read = 0, b_write = 0;
     do {
@@ -80,18 +117,23 @@ int flush() {
     }
     return flushed;
 }
+//referenced ChatGPT
 int check_option(char *header, int option) {
-    regex_t preg; // make a regex object thing
-    char *g = "^[ -~]{1,4096}\n$"; // this is the "format" that you're comparing header with
+    // make a regex object
+    regex_t preg;
+    //format comparison
+    char *g = "^[ -~]{1,4096}\n$";
     char *s = "^[ -~]{1,4096}\n[0-9]{1,10}\n$";
     int result = 0;
     if (option == 0) {
-        result = regcomp(&preg, g, REG_EXTENDED | REG_NEWLINE); // regex compile, initialize regex
+        //get pattern
+        result = regcomp(&preg, g, REG_EXTENDED | REG_NEWLINE);
     } else {
-        result = regcomp(&preg, s, REG_EXTENDED | REG_NEWLINE); // regex compile, initialize regex
+        //set pattern
+        result = regcomp(&preg, s, REG_EXTENDED | REG_NEWLINE);
     }
-    result = regexec(&preg, header, 0, NULL,
-        0); // regex execute, compares header with the format and stores a value in result
+    // regex execute, compares string with the pattern and stores a value in result
+    result = regexec(&preg, header, 0, NULL, 0);
     regfree(&preg);
     if (result) { // if result != 0, header doesnt have a correct format
         // bad request
@@ -104,7 +146,7 @@ int main() {
     char *buffer = malloc(sizeof(char *) * 512);
 
     size_t length = 0;
-    char c;
+    // char c;
 
     int infile = STDIN_FILENO;
     int outfile = STDOUT_FILENO;
@@ -133,7 +175,10 @@ int main() {
             return 1;
         }
         char *location = strtok(buffer, "\n");
-
+        if (!is_regular_file(location)) {
+            fprintf(stderr, "Invalid Command\n");
+            return 1;
+        }
         int file = open(location, O_RDONLY);
         if (file == -1) {
             fprintf(stderr, "Invalid Command\n");
@@ -169,32 +214,17 @@ int main() {
         }
         char *location = strtok(buffer, "\n");
         char *content_length = strtok(NULL, "\n");
+        if (!is_regular_file(location)) {
+            fprintf(stderr, "Invalid Command\n");
+            return 1;
+        }
         //open the file to write
         int file = open(location, O_WRONLY | O_TRUNC, 0644);
         if (file == -1) {
             fprintf(stderr, "Invalid Command\n");
             return 1;
         }
-        //closes stdin before providing content_length bytes
-        // if (count < 3) {
-        //     //write all the contents to STDOUT
-        // }
-        // char buff[PATH_MAX];
-        ssize_t b_read;
-        int num = 0;
-        while ((b_read = read(infile, &c, 1)) > 0) {
-            ssize_t b_write = 0;
-            if (num < atoi(content_length)) {
-                b_write = write(file, &c, b_read);
-                num++;
-            }
-
-            if (b_write == -1) {
-                fprintf(stderr, "Error writing to stdout\n");
-                close(infile);
-                return 1;
-            }
-        }
+        set_write(infile, file, atoi(content_length));
         //write "OK" at the end
         fprintf(stdout, "OK\n");
         close(file);
@@ -212,9 +242,6 @@ int main() {
         free(str[i]);
     }
     free(str);
-    //read the inputs separated by '\n'
-    //check if first input is 'get' or 'set' (case-sensitive)
-    //check for invalid commands
 
     return 0;
 }
