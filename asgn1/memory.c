@@ -11,28 +11,17 @@
 #include <sys/stat.h>
 #include <regex.h>
 
-// //stackoverflow: https://stackoverflow.com/questions/4553012/checking-if-a-file-is-a-directory-or-just-a-file
-// int is_regular_file(const char *path) {
-//     struct stat path_stat;
-//     stat(path, &path_stat);
-//     return S_ISREG(path_stat.st_mode);
-// }
-
-//function that counts elements in array
-int len_arr(const char *word) {
-    int length = 0;
-    while (word[length] != '\0') {
-        length++;
-    }
-    return length;
-}
 int set_write(int infile, int outfile, int content_length) {
+    int length = 512;
+    if (content_length < 512) {
+        length = content_length;
+    }
     //write the contents of location to STDOUT
-    uint8_t *buff[512];
+    uint8_t *buff[length];
     int count = 0;
     ssize_t b_read = 0, b_write = 0;
     do {
-        b_read = read(infile, buff, sizeof(buff));
+        b_read = read(infile, buff, length);
         if (b_read == -1) {
             fprintf(stderr, "Invalid Command\n");
             close(infile);
@@ -48,8 +37,8 @@ int set_write(int infile, int outfile, int content_length) {
             }
             b_write += bytes;
             count += bytes;
-        } while (b_write < b_read && count <= content_length);
-    } while (count <= content_length && b_read > 0 && b_write >= 0);
+        } while (b_write < b_read && count < content_length);
+    } while (count < content_length && b_read > 0 && b_write >= 0);
 
     close(infile);
     return 0;
@@ -77,15 +66,6 @@ int get_write(int infile, int outfile, int bytes) {
             b_write += bytes;
         } while (b_write < b_read);
     } while (b_read > 0 && b_write >= 0);
-
-    // while ((b_read = read(infile, buff, sizeof(buff))) > 0) {
-    //     ssize_t b_write = write(outfile, buff, b_read);
-    //     if (b_write == -1) {
-    //         fprintf(stderr, "Error writing to stdout\n");
-    //         close(infile);
-    //         return 1;
-    //     }
-    // }
 
     close(infile);
     return 0;
@@ -144,7 +124,7 @@ int check_option(char *header, int option) {
 }
 
 int main() {
-    char *buffer = malloc(sizeof(char *) * 512);
+    char *buffer = malloc(sizeof(char *) * 4097);
     size_t length = 0;
     int infile = STDIN_FILENO;
     int outfile = STDOUT_FILENO;
@@ -162,7 +142,7 @@ int main() {
     }
 
     //"get" option
-    if (strcmp(buffer, "get") == 0) {
+    if (strcmp(command, "get") == 0) {
         //open the file to read
         length = 0;
         read_line(1, buffer, infile, length);
@@ -172,26 +152,14 @@ int main() {
             return 1;
         }
         char *location = strtok(buffer, "\n");
-        // if (!is_regular_file(location)) {
-        //     fprintf(stderr, "Invalid Command\n");
-        //     return 1;
-        // }
+        //check the length of location
         int file = open(location, O_RDONLY);
         if (file == -1) {
             fprintf(stderr, "Invalid Command\n");
             close(file);
             return 1;
         }
-        //check for validity of location
-        // if (len_arr(location) > PATH_MAX) {
-        //     fprintf(stderr, "Filename is greater than PATH_MAX.\n");
-        //     close(file);
-        //     return 1;
-        // }
-        // if (strchr(location, '\0')) {
-        //     fprintf(stderr, "Filename includes NULL character!\n");
-        //     return 1;
-        // }
+
         if (flush()) {
             fprintf(stderr, "Invalid Command\n");
             return 1;
@@ -203,7 +171,7 @@ int main() {
 
     //"set" option
 
-    if (strcmp(buffer, "set") == 0) {
+    if (strcmp(command, "set") == 0) {
         read_line(2, buffer, infile, length);
         if (!check_option(buffer, 1)) {
             fprintf(stderr, "Invalid Command1\n");
@@ -211,10 +179,9 @@ int main() {
         }
         char *location = strtok(buffer, "\n");
         char *content_length = strtok(NULL, "\n");
-        // if (!is_regular_file(location)) {
-        //     fprintf(stderr, "Invalid Command2\n");
-        //     return 1;
-        // }
+
+        //check the length of location
+
         //open the file to write
         int file = open(location, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (file == -1) {
@@ -227,13 +194,6 @@ int main() {
         fprintf(stdout, "OK\n");
         close(file);
     }
-
-    // if (length > 0) {
-    //     buffer[length] = '\0'; // Null-terminate the string
-    //     printf("You entered: %s\n", buffer);
-    // } else {
-    //     printf("No input provided.\n");
-    // }
 
     free(buffer);
 

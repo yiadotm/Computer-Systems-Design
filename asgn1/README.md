@@ -37,6 +37,10 @@ can u use a loop to read from a buffer and write it to the file incrementally
 how do i use regex to find this pattern from an input in c: "get\nlocation\n", i want "get" and "location" from this input  
 
 
+partial write set
+how do i read only part of a buffer for partial writing
+
+
 
  
 
