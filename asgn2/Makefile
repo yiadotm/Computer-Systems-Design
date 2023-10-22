@@ -13,7 +13,7 @@ OBJECTS = $(SOURCES:%.c=%.o)
 
 all: $(EXECBIN)
 $(EXECBIN): $(OBJECTS)
-	$(CC) -o $@ $^ $(LIBFLAGS)
+	$(CC) -o $@ $^ $(LIBFLAGS) asgn2_helper_funcs.a
 
 clean:
 	rm -f $(EXECBIN) $(OBJECTS)
