@@ -4,7 +4,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "asgn2_helper_funcs.h"
-#include "functions.h"
+#include "io.h"
+#include "Request.h"
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -32,14 +33,20 @@ int main(int argc, char *argv[]) {
             char buf[4096] = "";
             //check if httpserver can bind to the provided port
             int total = my_read(con_fd, buf, 4096);
+            if (total == -1) {
+                fprintf(stderr, "my_read failed\n");
+            }
+            // write_n_bytes(STDOUT_FILENO, buf, total);
+            Request *line = build_request(buf, con_fd);
+            UNUSED(line);
+            if (line == NULL) {
+                fprintf(stderr, "regex broken\n");
+            }
 
-            write_n_bytes(STDOUT_FILENO, buf, total);
-            // Request *line = build_request(buf);
-            // UNUSED(line);
-            // print_request(line);
-            // if (strncmp(line->method, "GET", 8) == 0) {
-            //     int file = open(line->uri, O_RDONLY);
-            // }
+            print_request(line);
+            if (strncmp(line->method, "GET", 8) == 0) {
+                int file = open(line->uri, O_RDONLY);
+            }
 
             // if (strncmp(line->method, "PUT", 8) == 0) {
 

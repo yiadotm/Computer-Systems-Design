@@ -6,12 +6,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "asgn2_helper_funcs.h"
+#include "io.h"
 #define UNUSED(x) (void)x
 
 typedef struct {
     char* method;
     char* uri;
-    double version;
+    char* version;
     int content_length;
 
 } Request;
@@ -20,12 +21,6 @@ Request* newRequest(void);
 
 void freeRequest(Request* pR);
 
-Request *build_request(char *header);
+Request *build_request(char *header, int fd);
 
 void print_request(Request* r);
-
-
-void print_arr(char buf[], int total);
-
-ssize_t my_read(int in, char buf[], size_t nbytes);
-
