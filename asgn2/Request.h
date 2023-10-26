@@ -7,20 +7,20 @@
 #include <unistd.h>
 #include "asgn2_helper_funcs.h"
 #include "io.h"
-#define UNUSED(x) (void)x
+#define UNUSED(x) (void) x
 
 typedef struct {
-    char* method;
-    char* uri;
-    char* version;
+    char *method;
+    char *uri;
+    char *version;
     int content_length;
 
 } Request;
 
-Request* newRequest(void);
+Request *newRequest(void);
 
-void freeRequest(Request* pR);
+void freeRequest(Request *pR);
 
 Request *build_request(char *header, int fd);
 
-void print_request(Request* r);
+void print_request(Request *r);

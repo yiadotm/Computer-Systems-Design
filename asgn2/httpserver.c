@@ -38,34 +38,37 @@ int main(int argc, char *argv[]) {
             }
             // write_n_bytes(STDOUT_FILENO, buf, total);
             Request *line = build_request(buf, con_fd);
-            UNUSED(line);
             if (line == NULL) {
-                fprintf(stderr, "regex broken\n");
+                message_body(400, con_fd);
             }
 
             print_request(line);
             if (strncmp(line->method, "GET", 8) == 0) {
                 int file = open(line->uri, O_RDONLY);
+                if (file == -1) {
+                    message_body(404, con_fd);
+                } else {
+                    message_body(200, con_fd);
+                    pass_n_bytes(file, con_fd, line->content_length);
+                }
             }
 
-            // if (strncmp(line->method, "PUT", 8) == 0) {
-
-            // }
+            else if (strncmp(line->method, "PUT", 8) == 0) {
+                int file = open(line->uri, O_WRONLY | O_TRUNC, 0666);
+                if (file == -1) {
+                    message_body(201, con_fd);
+                    file = open(line->uri, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                } else {
+                    message_body(200, con_fd);
+                }
+                pass_n_bytes(con_fd, file, line->content_length);
+            }
+            else {
+                message_body(501, con_fd);
+            }
         }
         close(con_fd);
     }
 
-    // char buf[4096] = "";
-    // my_read(STDIN_FILENO, buf, 4096);
-    // print_arr(buf, total);
-    // Request *line = build_request(buf);
-    // if (line == NULL) {
-    //     fprintf(stderr, "request not valid.\n");
-    //     return 1;
-    // }
-    // printf("pog\n");
-    // print_request(line);
-    // printf("here2\n");
-    // freeRequest(line);
     return 0;
 }

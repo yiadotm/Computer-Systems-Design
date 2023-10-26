@@ -24,15 +24,14 @@ void freeRequest(Request *pR) {
 }
 Request *build_request(char *header, int fd) {
     UNUSED(fd);
-    regex_t reg; 
+    regex_t reg;
     char *re
         = "^([a-zA-Z]{1,8}) (/[a-zA-Z0-9.-]{1,63}) HTTP/([0-9].[0-9])\r\n([a-zA-Z0-9.-]{1,128}: "
           "[ -~]{1,128}\r\n)*\r\n$";
 
-    int result = regcomp(&reg, re, REG_EXTENDED | REG_NEWLINE); 
-    result = regexec(&reg, header, 0, NULL,
-        0); 
-    if (result != 0) { 
+    int result = regcomp(&reg, re, REG_EXTENDED | REG_NEWLINE);
+    result = regexec(&reg, header, 0, NULL, 0);
+    if (result != 0) {
         // bad request
         printf("here2\n");
         regfree(&reg);
@@ -41,7 +40,7 @@ Request *build_request(char *header, int fd) {
     Request *line = newRequest();
     line->method = strtok(header, " ");
     // write_n_bytes(fd, line->method, 50);
-    line->uri = strtok(NULL, " ");
+    line->uri = strtok(NULL, " /");
     line->version = strtok(NULL, "\r\n");
     return line;
 }
