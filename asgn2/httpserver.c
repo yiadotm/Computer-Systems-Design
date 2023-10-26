@@ -62,8 +62,7 @@ int main(int argc, char *argv[]) {
                     message_body(200, con_fd);
                 }
                 pass_n_bytes(con_fd, file, line->content_length);
-            }
-            else {
+            } else {
                 message_body(501, con_fd);
             }
         }

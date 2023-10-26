@@ -9,7 +9,7 @@
 #include "Request.h"
 
 void message_body(int code, int file) {
-    
+
     if (code == 200) { // When a method is Successful
         write_n_bytes(file, "HTTP/1.1 200 OK\r\nContent_length: 3\r\n\r\nOK\n", 41);
         return;
