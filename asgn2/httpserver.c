@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
             } else if (line->version != 1.1) {
                 message_body(505, con_fd);
             } else if (strncmp(line->method, "GET", 8) == 0) {
-                if (check_file(line->uri, 0, con_fd) == 0) {
+                if (check_file(line->uri, 0, con_fd)) {
                     // print_request(line);
                     int file = open(line->uri, O_RDONLY);
                     if (file == -1) {
@@ -70,22 +70,36 @@ int main(int argc, char *argv[]) {
             }
 
             else if (strncmp(line->method, "PUT", 8) == 0) {
-                if (check_file(line->uri, 1, con_fd) == 0) {
-                    int file = open(line->uri, O_WRONLY | O_TRUNC, 0666);
-                    if (file == -1) {
-                        message_body(201, con_fd);
-                        file = open(line->uri, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                    } else {
-                        message_body(200, con_fd);
-                        write_n_bytes(con_fd, "Content-Length: 3\r\n\r\nOK\n", 24);
-                    }
-                    int pass = 0;
-                    do {
-                        pass = pass_n_bytes(con_fd, file, 1);
-                    } while (pass > 0);
+                // if (check_file(line->uri, 1, con_fd)) {
+                //     int file = open(line->uri, O_WRONLY | O_TRUNC, 0666);
+                //     if (file == -1) {
+                //         message_body(201, con_fd);
+                //         file = open(line->uri, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                //     } else {
+                //         message_body(200, con_fd);
+                //         write_n_bytes(con_fd, "Content-Length: 3\r\n\r\nOK\n", 24);
+                //     }
+                //     int pass = 0;
+                //     do {
+                //         pass = pass_n_bytes(con_fd, file, 1);
+                //     } while (pass > 0);
 
-                    close(file);
+                //     close(file);
+                // }
+                int file = open(line->uri, O_WRONLY | O_TRUNC, 0644);
+                if (access(line->uri, F_OK) < 0) {
+                    message_body(201, con_fd);
+                    file = open(line->uri, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                } else {
+                    message_body(200, con_fd);
+                    write_n_bytes(con_fd, "Content-Length: 3\r\n\r\nOK\n", 24);
                 }
+                int pass = 0;
+                do {
+                    pass = pass_n_bytes(con_fd, file, 1);
+                } while (pass > 0);
+                write_n_bytes(con_fd, "\n", 1);
+                close(file);
 
             } else {
                 message_body(501, con_fd);

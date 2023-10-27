@@ -12,22 +12,22 @@ int check_file(char *file, int cmd, int outfile) {
     if (cmd == 0) { //get
         if (access(file, F_OK) < 0) {
             message_body(404, outfile);
-            return 1;
+            return 0;
         } else if (access(file, R_OK) < 0) {
             message_body(403, outfile);
-            return 1;
+            return 0;
         }
 
     } else { //set
         if (access(file, F_OK) < 0) {
             message_body(201, outfile);
-            return 1;
-        } else if (access(file, R_OK) < 0) {
+            return 0;
+        } else if (access(file, W_OK) < 0) {
             message_body(403, outfile);
-            return 1;
+            return 0;
         }
     }
-    return 0;
+    return 1;
 }
 
 void message_body(int code, int file) {
@@ -74,7 +74,7 @@ int get_write(int infile, int outfile) {
     do {
         b_read = pass_n_bytes(infile, outfile, 4096);
         if (b_read == -1) {
-            message_body(403, outfile);
+            // message_body(403, outfile);
             close(infile);
             return 1;
         }
