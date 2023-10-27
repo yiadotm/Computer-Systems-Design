@@ -12,7 +12,7 @@
 typedef struct {
     char *method;
     char *uri;
-    char *version;
+    double version;
     int content_length;
 
 } Request;
@@ -21,6 +21,6 @@ Request *newRequest(void);
 
 void freeRequest(Request *pR);
 
-Request *build_request(char *header, int fd);
+Request *build_request(char *header);
 
 void print_request(Request *r);

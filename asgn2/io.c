@@ -8,17 +8,39 @@
 #include "io.h"
 #include "Request.h"
 
+int check_file(char *file, int cmd, int outfile) {
+    if (cmd == 0) { //get
+        if (access(file, F_OK) < 0) {
+            message_body(404, outfile);
+            return 1;
+        } else if (access(file, R_OK) < 0) {
+            message_body(403, outfile);
+            return 1;
+        }
+
+    } else { //set
+        if (access(file, F_OK) < 0) {
+            message_body(201, outfile);
+            return 1;
+        } else if (access(file, R_OK) < 0) {
+            message_body(403, outfile);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void message_body(int code, int file) {
 
     if (code == 200) { // When a method is Successful
-        write_n_bytes(file, "HTTP/1.1 200 OK\r\nContent_length: 3\r\n\r\nOK\n", 41);
+        write_n_bytes(file, "HTTP/1.1 200 OK\r\n", 17);
         return;
     } else if (code == 201) { // When a URI's file is created
-        write_n_bytes(file, "HTTP/1.1 201 Created\r\nContent_length: 8\r\n\r\nCreated\n", 51);
+        write_n_bytes(file, "HTTP/1.1 201 Created\r\nContent-Length: 8\r\n\r\nCreated\n", 51);
         return;
     } else if (code == 400) { // When a request is ill-formatted
         write_n_bytes(
-            file, "HTTP/1.1 400 Bad Request\r\nContent_length: 12\r\n\r\nBad Request\n", 60);
+            file, "HTTP/1.1 400 Bad Request\r\nContent-Length: 12\r\n\r\nBad Request\n", 60);
         return;
     } else if (code == 403) { // When a URI's file is not accessible
         write_n_bytes(file, "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\nForbidden\n", 56);
@@ -45,6 +67,22 @@ void message_body(int code, int file) {
             80);
         return;
     }
+}
+int get_write(int infile, int outfile) {
+    //write the contents of location to STDOUT
+    ssize_t b_read = 0;
+    do {
+        b_read = pass_n_bytes(infile, outfile, 4096);
+        if (b_read == -1) {
+            message_body(403, outfile);
+            close(infile);
+            return 1;
+        }
+
+    } while (b_read > 0);
+
+    close(infile);
+    return 0;
 }
 
 void print_arr(char buf[], int total) {

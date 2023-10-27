@@ -9,11 +9,13 @@
 #include "Request.h"
 #define UNUSED(x) (void) x
 
+int check_file(char *file, int cmd, int outfile);
+
 void message_body(int code, int file);
 
-int set_write(int infile, int outfile, int content_length);
+int get_write(int infile, int outfile);
 
-int get_write(int infile, int outfile, int bytes);
+int set_write(int infile, int outfile, int content_length);
 
 void print_arr(char buf[], int total);
 

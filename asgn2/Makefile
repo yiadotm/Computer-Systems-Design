@@ -16,7 +16,7 @@ $(EXECBIN): $(OBJECTS)
 	$(CC) -o $@ $^ $(LIBFLAGS) asgn2_helper_funcs.a
 
 clean:
-	rm -f $(EXECBIN) $(OBJECTS)
+	rm -f $(EXECBIN) $(OBJECTS) 
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $<

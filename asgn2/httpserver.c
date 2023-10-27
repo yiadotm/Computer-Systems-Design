@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "asgn2_helper_funcs.h"
 #include "io.h"
@@ -34,38 +35,65 @@ int main(int argc, char *argv[]) {
             //check if httpserver can bind to the provided port
             int total = my_read(con_fd, buf, 4096);
             if (total == -1) {
-                fprintf(stderr, "my_read failed\n");
+                message_body(500, con_fd);
             }
             // write_n_bytes(STDOUT_FILENO, buf, total);
-            Request *line = build_request(buf, con_fd);
+            Request *line = build_request(buf);
             if (line == NULL) {
                 message_body(400, con_fd);
-            }
+            } else if (line->version != 1.1) {
+                message_body(505, con_fd);
+            } else if (strncmp(line->method, "GET", 8) == 0) {
+                if (check_file(line->uri, 0, con_fd) == 0) {
+                    // print_request(line);
+                    int file = open(line->uri, O_RDONLY);
+                    if (file == -1) {
+                        message_body(404, con_fd);
+                    } else {
 
-            print_request(line);
-            if (strncmp(line->method, "GET", 8) == 0) {
-                int file = open(line->uri, O_RDONLY);
-                if (file == -1) {
-                    message_body(404, con_fd);
-                } else {
-                    message_body(200, con_fd);
-                    pass_n_bytes(file, con_fd, line->content_length);
+                        message_body(200, con_fd); //use lseek to find content length
+                        struct stat file_info;
+                        stat(line->uri, &file_info);
+                        off_t file_size = file_info.st_size;
+                        char size_string[20];
+                        sprintf(size_string, "%lld", (long long) file_size);
+                        write_n_bytes(con_fd, "Content-Length: ", 16);
+                        write_n_bytes(con_fd, size_string, strlen(size_string));
+                        write_n_bytes(con_fd, "\r\n\r\n", 4);
+                        // int count = get_file_count(file);
+                        // printf("%d\n", count);
+                        get_write(file, con_fd);
+                    }
+                    close(file);
                 }
+
             }
 
             else if (strncmp(line->method, "PUT", 8) == 0) {
-                int file = open(line->uri, O_WRONLY | O_TRUNC, 0666);
-                if (file == -1) {
-                    message_body(201, con_fd);
-                    file = open(line->uri, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                } else {
-                    message_body(200, con_fd);
+                if (check_file(line->uri, 1, con_fd) == 0) {
+                    int file = open(line->uri, O_WRONLY | O_TRUNC, 0666);
+                    if (file == -1) {
+                        message_body(201, con_fd);
+                        file = open(line->uri, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+                    } else {
+                        message_body(200, con_fd);
+                        write_n_bytes(con_fd, "Content-Length: 3\r\n\r\nOK\n", 24);
+                    }
+                    int pass = 0;
+                    do {
+                        pass = pass_n_bytes(con_fd, file, 1);
+                    } while (pass > 0);
+
+                    close(file);
                 }
-                pass_n_bytes(con_fd, file, line->content_length);
+
             } else {
                 message_body(501, con_fd);
             }
+
+            freeRequest(line);
         }
+
         close(con_fd);
     }
 
