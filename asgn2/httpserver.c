@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
                         write_n_bytes(con_fd, "Content-Length: ", 16);
                         write_n_bytes(con_fd, size_string, strlen(size_string));
                         write_n_bytes(con_fd, "\r\n\r\n", 4);
-                       
+
                         get_write(file, con_fd);
                     }
                     close(file);
@@ -84,8 +84,6 @@ int main(int argc, char *argv[]) {
                     message_body(200, con_fd);
                     write_n_bytes(con_fd, "Content-Length: 3\r\n\r\nOK\n", 24);
                 }
-              
-  
 
             } else {
                 message_body(501, con_fd);
