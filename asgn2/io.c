@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <regex.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "asgn2_helper_funcs.h"
 #include "io.h"
 #include "Request.h"
@@ -12,20 +13,26 @@ int check_file(char *file, int cmd, int outfile) {
     if (cmd == 0) { //get
         if (access(file, F_OK) < 0) {
             message_body(404, outfile);
-            return 0;
+            return 404;
         } else if (access(file, R_OK) < 0) {
             message_body(403, outfile);
-            return 0;
+            return 403;
         }
 
     } else { //set
         if (access(file, F_OK) < 0) {
             message_body(201, outfile);
-            return 0;
+            return 201;
         } else if (access(file, W_OK) < 0) {
             message_body(403, outfile);
-            return 0;
+            return 403;
         }
+    }
+    struct stat info;
+    stat(file, &info);
+    if (!S_ISREG(info.st_mode)) {
+        message_body(403, outfile);
+        return 403;
     }
     return 1;
 }
@@ -68,6 +75,21 @@ void message_body(int code, int file) {
         return;
     }
 }
+int put_write(int infile, int outfile, Request *line) {
+    int pass = 0;
+    int bytes = 0;
+    do {
+        bytes = pass_n_bytes(infile, outfile, 1);
+        pass += bytes;
+        if (bytes < 0) {
+            close(outfile);
+            return 1;
+        }
+    } while (bytes > 0 || pass <= line->content_length);
+    return 0;
+    close(outfile);
+}
+
 int get_write(int infile, int outfile) {
     //write the contents of location to STDOUT
     ssize_t b_read = 0;
