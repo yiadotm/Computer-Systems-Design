@@ -13,7 +13,7 @@ int check_file(char *file, int cmd, int outfile);
 
 void message_body(int code, int file);
 
-int put_write(int infile, int outfile, Request* line);
+int put_write(int infile, int outfile, Request *line);
 
 int get_write(int infile, int outfile);
 
