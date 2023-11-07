@@ -2,80 +2,72 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <pthread.h>
 #include <sys/types.h>
 
 typedef struct queue queue_t;
-
-typedef struct queue_node {
-    void *data;
-    struct queue_node *next;
-} queue_node_t;
-
-typedef struct queue {
+typedef void* QueueElement;
+pthread_mutex_t mutex;
+typedef struct queue{
     int size;
-    queue_node_t *front;
-    queue_node_t *back;
-
+    QueueElement *buffer;
 } queue_t;
 
+int in, out, count = 0;
+
 queue_t *queue_new(int size) {
-    queue_t *q = (queue_t *)malloc(sizeof(queue_t));
+    queue_t *q = (queue_t *)malloc(sizeof(queue_t*));
     if (q == NULL) {
         return NULL;
     }
     q->size = size;
-    q->front = q->back = NULL;
+    q->buffer = (QueueElement*)malloc(size * sizeof(QueueElement));
+    if (q->buffer == NULL) {
+    free(q);
+    return NULL;  // Allocation for data failed
+    }
     return q;
-}
 
+}
 void queue_delete(queue_t **q) {
-    if (q != NULL && *q != NULL) {
-        while ((*q)->front != NULL) {
-            queue_node_t *temp = (*q)->front;
-            (*q)->front = (*q)->front->next;
-            free(temp);
-        }
+    if (q != NULL) {
+        free((*q)->buffer);
         free(*q);
         *q = NULL;
     }
+
 }
 
 bool queue_push(queue_t *q, void *elem) {
     if (q == NULL) {
         return false;
     }
-
-    queue_node_t *new_node = (queue_node_t *)malloc(sizeof(queue_node_t));
-    if (new_node == NULL) {
-        return false;
+    pthread_mutex_lock(&mutex);
+    while (count == q->size) {
+        pthread_mutex_unlock(&mutex);
+        pthread_mutex_lock(&mutex);
     }
-    new_node->data = elem;
-    new_node->next = NULL;
-
-    if (q->back == NULL) {
-        q->front = q->back = new_node;
-    }
-    else {
-        q->back->next = new_node;
-        q->back = new_node;
-    }
+    q->buffer[in] = elem;
+    in = (in + 1) % q->size;
+    count += 1;
+    pthread_mutex_unlock(&mutex);
     return true;
+
+
 }
-
-
 bool queue_pop(queue_t *q, void **elem) {
-    if (q == NULL || q->front == NULL || elem == NULL) {
+    if (q == NULL) {
         return false;
     }
-    queue_node_t *temp = q->front;
-    *elem = temp->data;
-    q->front = q->front->next;
-    
-    free(temp);
-
-    if (q->front == NULL) {
-        q->back = NULL;
+    pthread_mutex_lock(&mutex);
+    while (count == 0) {
+        pthread_mutex_unlock(&mutex);
+        pthread_mutex_lock(&mutex);       
     }
-
+    *elem = q->buffer[out];
+    out = (out + 1) % q->size;
+    count -= 1;
+    pthread_mutex_unlock(&mutex);
     return true;
 }
+
