@@ -4,3 +4,9 @@ This directory contains source code and other files for Assignment 3.
 
 Use this README document to store notes about design, testing, and
 questions you have while developing your assignment.
+
+For rwlock.c, I referenced the book:  
+
+>> Operating Systems: Principles & Practice  
+>> Volume II: Concurrency  
+>> 5.6.1  
