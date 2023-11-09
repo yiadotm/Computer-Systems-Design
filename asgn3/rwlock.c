@@ -6,6 +6,9 @@
 #include "rwlock.h"
 #define UNUSED(x) (void) x
 
+static int reader_should_wait(rwlock_t *rw);
+static int writer_should_wait(rwlock_t *rw);
+
 typedef struct rwlock rwlock_t;
 typedef struct rwlock {
     PRIORITY p;
@@ -53,7 +56,7 @@ void rwlock_delete(rwlock_t **rw) {
 void reader_lock(rwlock_t *rw) {
     pthread_mutex_lock(&rw->mutex);
     rw->waitingReaders += 1;
-    while (rw->activeWriters > 0 || rw->waitingWriters > 0) {
+    while (reader_should_wait(rw)) {
         pthread_cond_wait(&rw->readGo, &rw->mutex);
     }
     rw->waitingReaders -= 1;
@@ -65,6 +68,7 @@ void reader_lock(rwlock_t *rw) {
 void reader_unlock(rwlock_t *rw) {
     pthread_mutex_lock(&rw->mutex);
     rw->activeReaders -= 1;
+
     if (rw->activeReaders == 0 && rw->waitingWriters > 0) {
         pthread_cond_signal(&rw->writeGo);
     }
@@ -74,7 +78,7 @@ void reader_unlock(rwlock_t *rw) {
 void writer_lock(rwlock_t *rw) {
     pthread_mutex_lock(&rw->mutex);
     rw->waitingWriters += 1;
-    while (rw->activeWriters > 0 || rw->activeReaders > 0) {
+    while (writer_should_wait(rw)) {
         pthread_cond_wait(&rw->writeGo, &rw->mutex);
     }
     rw->waitingWriters -= 1;
@@ -85,12 +89,39 @@ void writer_lock(rwlock_t *rw) {
 void writer_unlock(rwlock_t *rw) {
     pthread_mutex_lock(&rw->mutex);
     rw->activeWriters -= 1;
-    assert(rw->activeWriters == 0);
-    if (rw->waitingWriters > 0) {
+    if (rw->activeWriters == 0 && rw->waitingWriters > 0) {
         pthread_cond_signal(&rw->writeGo);
 
     } else {
         pthread_cond_broadcast(&rw->readGo);
     }
     pthread_mutex_unlock(&rw->mutex);
+}
+
+static int reader_should_wait(rwlock_t *rw) {
+    if (rw->p == WRITERS) {
+        if (rw->activeWriters > 0 || rw->waitingWriters > 0) {
+            return 1;
+        }
+    } else if (rw->p == READERS) {
+        if (rw->activeWriters > 0 || rw->waitingReaders > 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int writer_should_wait(rwlock_t *rw) {
+    if (rw->p == WRITERS) {
+        if (rw->activeWriters > 0 || rw->activeReaders > 0) {
+            return 1;
+        }
+    } else if (rw->p == READERS) {
+        if (rw->activeReaders > 0 || rw->waitingReaders > 0) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
