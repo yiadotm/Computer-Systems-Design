@@ -17,6 +17,8 @@ typedef struct rwlock {
     int activeWriters;
     int waitingReaders;
     int waitingWriters;
+    //total number of active readers
+    uint32_t totalActiveReaders;
     pthread_mutex_t mutex;
     pthread_cond_t readGo;
     pthread_cond_t writeGo;
@@ -54,6 +56,9 @@ void rwlock_delete(rwlock_t **rw) {
 }
 
 void reader_lock(rwlock_t *rw) {
+    //give lock if less than n readers have acq the lock
+    //or no writer is waiting
+    //if give reader, increment
     pthread_mutex_lock(&rw->mutex);
     rw->waitingReaders += 1;
     while (reader_should_wait(rw)) {
@@ -76,6 +81,9 @@ void reader_unlock(rwlock_t *rw) {
 }
 
 void writer_lock(rwlock_t *rw) {
+    //before giving writer lock, make sure n readers have acq lock at some point
+    //or no reader is currently waiting or active
+    //if give lock, set var to 0
     pthread_mutex_lock(&rw->mutex);
     rw->waitingWriters += 1;
     while (writer_should_wait(rw)) {
@@ -104,7 +112,17 @@ static int reader_should_wait(rwlock_t *rw) {
             return 1;
         }
     } else if (rw->p == READERS) {
-        if (rw->activeWriters > 0 || rw->waitingReaders > 0) {
+        if (rw->activeWriters > 0) {
+            return 1;
+        }
+    } else if (rw->p == N_WAY) {
+        //give lock if less than n readers have acq the lock
+        //or no writer is waiting
+        //if give reader, increment
+        if (rw->totalActiveReaders < rw->n || rw->waitingWriters == 0) {
+            rw->totalActiveReaders += 1;
+            return 0;
+        } else {
             return 1;
         }
     }
@@ -121,7 +139,26 @@ static int writer_should_wait(rwlock_t *rw) {
         if (rw->activeReaders > 0 || rw->waitingReaders > 0) {
             return 1;
         }
+    } else if (rw->p == N_WAY) {
+        //before giving writer lock, make sure n readers have acq lock at some point
+        //or no reader is currently waiting or active
+        //if give lock, set var to 0
+        if (rw->n == rw->totalActiveReaders
+            || (rw->activeReaders == 0 && rw->waitingReaders == 0)) {
+            rw->totalActiveReaders = 0;
+            return 0;
+        } else {
+            return 1;
+        }
     }
 
     return 0;
 }
+
+// how do i test if my queue is thread safe
+// how do i implement n_way
+// what other ways can i test my code
+// what does "Unlimited readers can (simultaneously) acquire the lock." mean
+
+//push a lot of elements and pop
+//use time to check certain points
