@@ -33,6 +33,7 @@ rwlock_t *rwlock_new(PRIORITY p, uint32_t n) {
     } else {
         r->n = -1;
     }
+    r->totalActiveReaders = 0;
     int rc = 0;
     rc = pthread_mutex_init(&r->mutex, NULL);
     assert(!rc);
@@ -144,7 +145,7 @@ static int writer_should_wait(rwlock_t *rw) {
         //or no reader is currently waiting or active
         //if give lock, set var to 0
         if (rw->n == rw->totalActiveReaders
-            || (rw->activeReaders == 0 && rw->waitingReaders == 0)) {
+            || (rw->activeReaders == 0 || rw->waitingReaders == 0)) {
             rw->totalActiveReaders = 0;
             return 0;
         } else {
@@ -162,3 +163,5 @@ static int writer_should_wait(rwlock_t *rw) {
 
 //push a lot of elements and pop
 //use time to check certain points
+
+//check individuals tests.
