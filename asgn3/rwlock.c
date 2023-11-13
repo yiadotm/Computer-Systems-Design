@@ -33,6 +33,10 @@ rwlock_t *rwlock_new(PRIORITY p, uint32_t n) {
     } else {
         r->n = -1;
     }
+    r->activeReaders = 0;
+    r->activeWriters = 0;
+    r->waitingReaders = 0;
+    r->waitingWriters = 0;
     r->totalActiveReaders = 0;
     int rc = 0;
     rc = pthread_mutex_init(&r->mutex, NULL);
