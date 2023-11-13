@@ -13,6 +13,7 @@ This assignment has 6 files:
 * rwlock.h  - header file for the read/write lock ADT  
 * README.md  
 
+I referenced DR. Quinn's lecture about semaphores in queues for queue.c  
 
 For rwlock.c, I referenced the book:  
 
