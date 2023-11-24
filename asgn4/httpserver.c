@@ -110,12 +110,8 @@ void handle_get(conn_t *conn) {
 
     // What are the steps in here?
 
-    // Check if file already exists before opening it.
-    bool existed = access(uri, F_OK) == 0;
-    debug("%s existed? %d", uri, existed);
-
     // 1. Open the file.
-    int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+    int fd = open(uri, O_RDONLY, 0600);
 
     // If  open it returns < 0, then use the result appropriately
     if (fd < 0) {
@@ -124,18 +120,18 @@ void handle_get(conn_t *conn) {
         //   a. Cannot access -- use RESPONSE_FORBIDDEN
         if (errno == EACCES || errno == EISDIR) {
             res = &RESPONSE_FORBIDDEN;
-            goto out;
+            conn_send_response(conn, res);
         }
         //   b. Cannot find the file -- use RESPONSE_NOT_FOUND
         else if (errno == ENOENT) {
             res = &RESPONSE_NOT_FOUND;
-            goto out;
+            conn_send_response(conn, res);
         }
         //   c. other error? -- use RESPONSE_INTERNAL_SERVER_ERROR
         // (hint: check errno for these cases)!
         else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
-            goto out;
+            conn_send_response(conn, res);
         }
     }
     // 2. Get the size of the file.
@@ -146,28 +142,20 @@ void handle_get(conn_t *conn) {
         exit(1);
     }
     // Get the size of the file.
-
+    size_t size = fileInfo.st_size;
     // 3. Check if the file is a directory, because directories *will*
     // open, but are not valid.
     // (hint: checkout the macro "S_IFDIR", which you can use after you call fstat!)
     if (fileInfo.st_mode & S_IFDIR) {
         res = &RESPONSE_FORBIDDEN;
-        goto out;
+        conn_send_response(conn, res);
     }
 
     // 4. Send the file
     // (hint: checkout the conn_send_file function!)
-    conn_send_file(conn, fd, fileInfo.st_mode);
+    res = conn_send_file(conn, fd, size);
 
-    if (res == NULL && existed) {
-        res = &RESPONSE_OK;
-    } else if (res == NULL && !existed) {
-        res = &RESPONSE_CREATED;
-    }
     close(fd);
-
-out:
-    conn_send_response(conn, res);
 }
 
 void handle_unsupported(conn_t *conn) {
