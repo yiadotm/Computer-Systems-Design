@@ -29,7 +29,6 @@ void handle_unsupported(conn_t *);
 void *dispatcherThread(void *arg);
 void *workerThreads(void *arg);
 
-
 void *dispatcherThread(void *arg) {
     Arguments *a = (Arguments *) arg;
 
