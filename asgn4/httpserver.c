@@ -18,6 +18,7 @@
 #include "debug.h"
 #include "rwlock.h"
 #include "connection.h"
+#include "arg.h"
 
 #define OPTIONS "t:"
 
@@ -25,6 +26,29 @@ void handle_connection(int);
 void handle_get(conn_t *);
 void handle_put(conn_t *);
 void handle_unsupported(conn_t *);
+void *dispatcherThread(void *arg);
+void *workerThreads(void *arg);
+
+
+void *dispatcherThread(void *arg) {
+    Arguments *a = (Arguments *) arg;
+
+    while (1) {
+        int con_fd = listener_accept(a->sock);
+        queue_push(a->q, &con_fd);
+    }
+}
+
+void *workerThreads(void *arg) {
+    Arguments *a = (Arguments *) arg;
+
+    while (1) {
+        int fd = 0;
+        queue_pop(a->q, (void **) &fd);
+        handle_connection(fd);
+        close(fd);
+    }
+}
 
 int main(int argc, char *argv[]) {
     //chatGPT
@@ -65,17 +89,46 @@ int main(int argc, char *argv[]) {
     //check if httpserver can bind to the provided port
     Listener_Socket sock;
     int listen_fd = listener_init(&sock, port);
-
     if (listen_fd == -1) {
         fprintf(stderr, "listener_init failed\n");
         return 1;
     }
-    while (1) {
-        int con_fd = listener_accept(&sock);
-        handle_connection(con_fd);
-        close(con_fd);
+    //initialize pthreads
+    pthread_t dispatcherThreadId, workerThreadIds[threads];
+    queue_t *queue = queue_new(threads);
+    Arguments *a = newArguments(sock, threads, queue);
+
+    // Create dispatcher thread
+    if (pthread_create(&dispatcherThreadId, NULL, dispatcherThread, (void *) &a) != 0) {
+        perror("Error creating dispatcher thread");
+        exit(EXIT_FAILURE);
     }
 
+    //create worker threads
+    for (int i = 0; i < threads; i++) {
+        if (pthread_create(&workerThreadIds[i], NULL, workerThreads, (void *) &a) != 0) {
+            perror("Error creating worker thread");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    // Join the dispatcher thread
+    pthread_join(dispatcherThreadId, NULL);
+
+    // Join the worker threads
+    for (int i = 0; i < threads; ++i) {
+        pthread_join(workerThreadIds[i], NULL);
+    }
+
+    // while (1) {
+    //     int con_fd = listener_accept(&sock);
+    //     handle_connection(con_fd);
+    //     close(con_fd);
+    // }
+
+    //free stuff
+    queue_delete(&queue);
+    freeArguments(&a);
     return EXIT_SUCCESS;
 }
 
