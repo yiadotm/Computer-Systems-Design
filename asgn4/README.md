@@ -9,4 +9,9 @@ questions you have while developing your assignment.
 Questions asked in ChatGPT:  
 if i want to use getopt for this command ./httpserver [-t threads] <port>, how would i do it  
 
+can you write an example of a dispatcher thread and worker threads in c  
+
+can you help me find a bug in this code? (actual piece of code)  
+
+
   

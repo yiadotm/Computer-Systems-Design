@@ -34,7 +34,11 @@ void *dispatcherThread(void *arg) {
 
     while (1) {
         int con_fd = listener_accept(a->sock);
-        queue_push(a->q, &con_fd);
+        if (con_fd == -1) {
+            printf("error: listener_accept returned -1\n%s\n", strerror(errno));
+        }
+        queue_push(a->q, (void *) &con_fd);
+        // printf("success: %d,fd: %d\n", b, con_fd);
     }
 }
 
@@ -42,10 +46,15 @@ void *workerThreads(void *arg) {
     Arguments *a = (Arguments *) arg;
 
     while (1) {
-        int fd = 0;
-        queue_pop(a->q, (void **) &fd);
-        handle_connection(fd);
-        close(fd);
+        void *elem = NULL;
+        int b = queue_pop(a->q, &elem);
+        if (b) {
+            int fd = *(int *) elem;
+            // printf("fd: %d, success: %d\n", fd, b);
+            handle_connection(fd);
+            close(fd);
+        }
+
     }
 }
 
@@ -96,16 +105,17 @@ int main(int argc, char *argv[]) {
     pthread_t dispatcherThreadId, workerThreadIds[threads];
     queue_t *queue = queue_new(threads);
     Arguments *a = newArguments(sock, threads, queue);
+    // uintptr_t workers[threads];
 
     // Create dispatcher thread
-    if (pthread_create(&dispatcherThreadId, NULL, dispatcherThread, (void *) &a) != 0) {
+    if (pthread_create(&dispatcherThreadId, NULL, dispatcherThread, (void *) a) != 0) {
         perror("Error creating dispatcher thread");
         exit(EXIT_FAILURE);
     }
 
     //create worker threads
     for (int i = 0; i < threads; i++) {
-        if (pthread_create(&workerThreadIds[i], NULL, workerThreads, (void *) &a) != 0) {
+        if (pthread_create(&workerThreadIds[i], NULL, workerThreads, (void *) a) != 0) {
             perror("Error creating worker thread");
             exit(EXIT_FAILURE);
         }
@@ -113,7 +123,6 @@ int main(int argc, char *argv[]) {
 
     // Join the dispatcher thread
     pthread_join(dispatcherThreadId, NULL);
-
     // Join the worker threads
     for (int i = 0; i < threads; ++i) {
         pthread_join(workerThreadIds[i], NULL);

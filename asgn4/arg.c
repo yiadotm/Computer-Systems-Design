@@ -5,9 +5,9 @@
 Arguments *newArguments(Listener_Socket sock, int threads, queue_t *queue) {
     Arguments *a = (Arguments *) malloc(sizeof(Arguments));
     a->sock = (Listener_Socket *) malloc(sizeof(Listener_Socket));
-    a->q = (queue_t *) malloc(sizeof(queue_t *));
+    // a->q = (queue_t *) malloc(sizeof(queue_t *));
     a->q = queue;
-    a->sock = &sock;
+    a->sock->fd = sock.fd;
     a->threads = threads;
     return a;
 }
