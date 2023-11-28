@@ -13,6 +13,7 @@ typedef struct Node {
 } Node;
 
 typedef struct LinkedHashMap {
+    size_t size;
     size_t capacity;
     Node **buckets;
     rwlock_t *lock;
@@ -20,7 +21,9 @@ typedef struct LinkedHashMap {
 
 unsigned int polynomial_hash(const char *str);
 
-LinkedHashMap *create_linkedHashMap(size_t capacity, PRIORITY lock_priority, uint32_t n); 
+LinkedHashMap *create_linkedHashMap(size_t capacity);
+
+void linkedHashMap_resize(LinkedHashMap *map, size_t new_capacity);
 
 void linkedHashMap_put(LinkedHashMap *map, const char *key, int value);
 

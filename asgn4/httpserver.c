@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <err.h>
@@ -19,28 +20,31 @@
 #include "rwlock.h"
 #include "connection.h"
 #include "arg.h"
+#include "file_lock.h"
 
-#define OPTIONS "t:"
+#define UNUSED(x) ((void) (x))
+#define OPTIONS   "t:"
 
-void handle_connection(int);
-void handle_get(conn_t *);
-void handle_put(conn_t *);
+void handle_connection(int connfd, FileLock *map);
+void handle_get(conn_t *, FileLock *map);
+void handle_put(conn_t *, FileLock *map);
 void handle_unsupported(conn_t *);
-void *dispatcherThread(void *arg);
+// void *dispatcherThread(void *arg);
 void *workerThreads(void *arg);
 
-void *dispatcherThread(void *arg) {
-    Arguments *a = (Arguments *) arg;
+// void *dispatcherThread(void *arg) {
+//     Arguments *a = (Arguments *) arg;
 
-    while (1) {
-        int con_fd = listener_accept(a->sock);
-        if (con_fd == -1) {
-            printf("error: listener_accept returned -1\n%s\n", strerror(errno));
-        }
-        queue_push(a->q, (void *) &con_fd);
-        // printf("success: %d,fd: %d\n", b, con_fd);
-    }
-}
+//     while (1) {
+//         int con_fd = listener_accept(a->sock);
+//         // if (con_fd == -1) {
+//         //     printf("error: listener_accept returned -1\n%s\n", strerror(errno));
+//         // }
+//         queue_push(a->q, (void *) &con_fd);
+//         // printf("success: %d,fd: %d\n", b, con_fd);
+//     }
+//     return arg;
+// }
 
 void *workerThreads(void *arg) {
     Arguments *a = (Arguments *) arg;
@@ -51,11 +55,11 @@ void *workerThreads(void *arg) {
         if (b) {
             int fd = *(int *) elem;
             // printf("fd: %d, success: %d\n", fd, b);
-            handle_connection(fd);
+            handle_connection(fd, a->fi);
             close(fd);
         }
-
     }
+    return arg;
 }
 
 int main(int argc, char *argv[]) {
@@ -85,8 +89,8 @@ int main(int argc, char *argv[]) {
             return EXIT_FAILURE;
         }
         // Now you can use 'threads' and 'port' in your program
-        printf("Threads: %d\n", threads);
-        printf("Port: %zu\n", port);
+        // printf("Threads: %d\n", threads);
+        // printf("Port: %zu\n", port);
     } else {
         // Missing required arguments
         fprintf(stderr, "Usage: %s [-t threads] <port>\n", argv[0]);
@@ -102,16 +106,19 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     //initialize pthreads
-    pthread_t dispatcherThreadId, workerThreadIds[threads];
-    queue_t *queue = queue_new(threads);
-    Arguments *a = newArguments(sock, threads, queue);
+    // pthread_t dispatcherThreadId,
+    pthread_t workerThreadIds[threads];
+    queue_t *queue = queue_new(4096);
+    FileLock *file = file_lock_new(threads);
+    Arguments *a = newArguments(queue, file);
+
     // uintptr_t workers[threads];
 
-    // Create dispatcher thread
-    if (pthread_create(&dispatcherThreadId, NULL, dispatcherThread, (void *) a) != 0) {
-        perror("Error creating dispatcher thread");
-        exit(EXIT_FAILURE);
-    }
+    // // Create dispatcher thread
+    // if (pthread_create(&dispatcherThreadId, NULL, dispatcherThread, (void *) a) != 0) {
+    //     perror("Error creating dispatcher thread");
+    //     exit(EXIT_FAILURE);
+    // }
 
     //create worker threads
     for (int i = 0; i < threads; i++) {
@@ -120,9 +127,16 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     }
-
+    while (1) {
+        int con_fd = listener_accept(&sock);
+        // if (con_fd == -1) {
+        //     printf("error: listener_accept returned -1\n%s\n", strerror(errno));
+        // }
+        queue_push(a->q, (void *) &con_fd);
+        // printf("success: %d,fd: %d\n", b, con_fd);
+    }
     // Join the dispatcher thread
-    pthread_join(dispatcherThreadId, NULL);
+    // pthread_join(dispatcherThreadId, NULL);
     // Join the worker threads
     for (int i = 0; i < threads; ++i) {
         pthread_join(workerThreadIds[i], NULL);
@@ -137,10 +151,11 @@ int main(int argc, char *argv[]) {
     //free stuff
     queue_delete(&queue);
     freeArguments(&a);
+    file_lock_delete(&file);
     return EXIT_SUCCESS;
 }
 
-void handle_connection(int connfd) {
+void handle_connection(int connfd, FileLock *map) {
 
     conn_t *conn = conn_new(connfd);
 
@@ -152,85 +167,119 @@ void handle_connection(int connfd) {
         debug("%s", conn_str(conn));
         const Request_t *req = conn_get_request(conn);
         if (req == &REQUEST_GET) {
-            handle_get(conn);
+            // printf("here1\n");
+            handle_get(conn, map);
+            // printf("here2\n");
         } else if (req == &REQUEST_PUT) {
-            handle_put(conn);
+            handle_put(conn, map);
         } else {
             handle_unsupported(conn);
         }
     }
-
+    // close(connfd);
     conn_delete(&conn);
 }
 
-void handle_get(conn_t *conn) {
-
+void handle_get(conn_t *conn, FileLock *map) {
     char *uri = conn_get_uri(conn);
+    char *requestID = conn_get_header(conn, "Request-Id");
     const Response_t *res = NULL;
-    debug("handling get request for %s", uri);
-
+    // debug("handling get request for %s", uri);
     // What are the steps in here?
+    // bool existed = access(uri, F_OK) == 0;
 
     // 1. Open the file.
-    int fd = open(uri, O_RDONLY, 0600);
-
+    int fd = open(uri, O_RDONLY);
+    // if (!existed) {
+    //     res = &RESPONSE_NOT_FOUND;
+    //     goto out;
+    // }
     // If  open it returns < 0, then use the result appropriately
     if (fd < 0) {
-        debug("%s: %d", uri, errno);
+        // debug("%s: %d", uri, errno);
 
         //   a. Cannot access -- use RESPONSE_FORBIDDEN
         if (errno == EACCES || errno == EISDIR) {
             res = &RESPONSE_FORBIDDEN;
-            conn_send_response(conn, res);
+            goto out;
         }
         //   b. Cannot find the file -- use RESPONSE_NOT_FOUND
         else if (errno == ENOENT) {
             res = &RESPONSE_NOT_FOUND;
-            conn_send_response(conn, res);
+            goto out;
         }
         //   c. other error? -- use RESPONSE_INTERNAL_SERVER_ERROR
         // (hint: check errno for these cases)!
         else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
-            conn_send_response(conn, res);
+            goto out;
         }
     }
     // 2. Get the size of the file.
     // (hint: checkout the function fstat)!
+    file_lock_read_lock(map, uri);
+
     struct stat fileInfo;
     if (fstat(fd, &fileInfo) == -1) {
-        fprintf(stderr, "Error getting file information");
-        exit(1);
+        goto out;
     }
     // Get the size of the file.
-    size_t size = fileInfo.st_size;
+    uint64_t size = fileInfo.st_size;
     // 3. Check if the file is a directory, because directories *will*
     // open, but are not valid.
     // (hint: checkout the macro "S_IFDIR", which you can use after you call fstat!)
     if (fileInfo.st_mode & S_IFDIR) {
         res = &RESPONSE_FORBIDDEN;
-        conn_send_response(conn, res);
+        goto out;
     }
+    // uint16_t code = response_get_code(res);
+    // fprintf(stderr, "GET,/%s,%" PRIu16 "\n", uri, code);
 
     // 4. Send the file
     // (hint: checkout the conn_send_file function!)
+
     res = conn_send_file(conn, fd, size);
 
+out:
+    if (res) {
+        conn_send_response(conn, res);
+        fprintf(stderr, "GET,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+
+    } else {
+        fprintf(stderr, "GET,/%s,%d,%s\n", uri, 200, requestID);
+    }
+
+    // if (res == NULL) {
+    //     printf("here\n");
+    // }
+    // if (res != NULL) {
+    //     fprintf(stderr, "GET,/%s,%d,%s\n", uri, 200, requestID);
+    // } else {
+    //     fprintf(stderr, "GET,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+    // }
     close(fd);
+    file_lock_read_unlock(map, uri);
 }
 
 void handle_unsupported(conn_t *conn) {
     debug("handling unsupported request");
+    // char *uri = conn_get_uri(conn);
+    // char *requestID = conn_get_header(conn, "Request-Id");
 
     // send responses
     conn_send_response(conn, &RESPONSE_NOT_IMPLEMENTED);
+    // fprintf(stderr, "UNSUPPORTED,%s,%d,%s\n", uri, response_get_code(&RESPONSE_NOT_IMPLEMENTED),
+    //     requestID);
 }
 
-void handle_put(conn_t *conn) {
+void handle_put(conn_t *conn, FileLock *map) {
 
     char *uri = conn_get_uri(conn);
+
+    char *requestID = conn_get_header(conn, "Request-Id");
     const Response_t *res = NULL;
     debug("handling put request for %s", uri);
+    file_lock_write_lock(map, uri);
 
     // Check if file already exists before opening it.
     bool existed = access(uri, F_OK) == 0;
@@ -256,9 +305,11 @@ void handle_put(conn_t *conn) {
     } else if (res == NULL && !existed) {
         res = &RESPONSE_CREATED;
     }
-
-    close(fd);
+    // fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
 
 out:
     conn_send_response(conn, res);
+    fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+    close(fd);
+    file_lock_write_unlock(map, uri);
 }

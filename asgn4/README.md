@@ -13,5 +13,9 @@ can you write an example of a dispatcher thread and worker threads in c
 
 can you help me find a bug in this code? (actual piece of code)  
 
+how do i make a Linked Hash Map using the polynomial rolling hash function in c  
+
+ 
+
 
   
