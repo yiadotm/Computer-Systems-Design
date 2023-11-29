@@ -112,3 +112,6 @@ void linkedHashMap_destroy(LinkedHashMap *map) {
     free(map->buckets);
     free(map);
 }
+
+//need mutex lock when: access ht , after unlock on ht,
+//

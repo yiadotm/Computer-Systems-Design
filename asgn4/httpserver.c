@@ -27,7 +27,7 @@
 
 void handle_connection(int connfd, FileLock *map, Arguments *a);
 void audit(conn_t *conn, const Response_t *res, char *uri, char *requestID, int com);
-void handle_get(conn_t *, FileLock *map);
+void handle_get(conn_t *, FileLock *map, Arguments *a);
 void handle_put(conn_t *, FileLock *map, Arguments *a);
 void handle_unsupported(conn_t *);
 // void *dispatcherThread(void *arg);
@@ -51,14 +51,16 @@ void *workerThreads(void *arg) {
     Arguments *a = (Arguments *) arg;
     queue_t *q = a->q;
     while (1) {
-        void *elem = NULL;
-        int b = queue_pop(q, &elem);
-        if (b) {
-            int fd = *(int *) elem;
-            // printf("fd: %d, success: %d\n", fd, b);
-            handle_connection(fd, a->fi, a);
-            close(fd);
-        }
+        // void *elem = NULL;
+        // int b = queue_pop(q, &elem);
+        // if (b) {
+        uintptr_t fd = 0;
+        queue_pop(q, (void **) &fd);
+        // printf("fd: %d, success: %d\n", fd, b);
+        handle_connection((int) fd, a->fi, a);
+        close(fd);
+
+        // }
     }
     return arg;
 }
@@ -102,7 +104,7 @@ int main(int argc, char *argv[]) {
     // pthread_t dispatcherThreadId,
     pthread_t workerThreadIds[threads];
     queue_t *queue = queue_new(4096);
-    FileLock *file = file_lock_new(threads);
+    FileLock *file = file_lock_new(4096);
     Arguments *a = newArguments(queue, file);
 
     // uintptr_t workers[threads];
@@ -129,12 +131,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     while (1) {
-        int con_fd = listener_accept(&sock);
+        // int con_fd = listener_accept(&sock);
         // if (con_fd == -1) {
         //     printf("error: listener_accept returned -1\n%s\n", strerror(errno));
         // }
-        queue_push(a->q, (void *) &con_fd);
+        // queue_push(a->q, (void *) &con_fd);
         // printf("success: %d,fd: %d\n", b, con_fd);
+
+        intptr_t fd = listener_accept(&sock);
+        queue_push(a->q, (void *) fd);
     }
     // Join the dispatcher thread
     // pthread_join(dispatcherThreadId, NULL);
@@ -165,11 +170,11 @@ void handle_connection(int connfd, FileLock *map, Arguments *a) {
     if (res != NULL) {
         conn_send_response(conn, res);
     } else {
-        debug("%s", conn_str(conn));
+        // debug("%s", conn_str(conn));
         const Request_t *req = conn_get_request(conn);
         if (req == &REQUEST_GET) {
             // printf("here1\n");
-            handle_get(conn, map);
+            handle_get(conn, map, a);
             // printf("here2\n");
         } else if (req == &REQUEST_PUT) {
             handle_put(conn, map, a);
@@ -194,21 +199,30 @@ void audit(conn_t *conn, const Response_t *res, char *uri, char *requestID, int 
     }
 }
 //replace out, use return after copy out to goto out
-void handle_get(conn_t *conn, FileLock *map) {
-    // UNUSED(map);
+void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
+    // UNUSED(a);
     char *uri = conn_get_uri(conn);
     char *requestID = conn_get_header(conn, "Request-Id");
     const Response_t *res = NULL;
     // debug("handling get request for %s", uri);
     // What are the steps in here?
-    // bool existed = access(uri, F_OK) == 0;
+    bool existed = access(uri, F_OK) == 0;
     // int unlock = 0;
     // 1. Open the file.
+    pthread_mutex_lock(&a->mutex);
+
+    file_lock_read_lock(map, uri);
     int fd = open(uri, O_RDONLY);
-    // if (!existed) {
-    //     res = &RESPONSE_NOT_FOUND;
-    //     goto out;
-    // }
+    if (!existed) {
+        res = &RESPONSE_NOT_FOUND;
+        audit(conn, res, uri, requestID, 0);
+        file_lock_read_unlock(map, uri);
+
+        pthread_mutex_unlock(&a->mutex);
+
+        return;
+    }
+
     // If  open it returns < 0, then use the result appropriately
     if (fd < 0) {
         // debug("%s: %d", uri, errno);
@@ -217,12 +231,20 @@ void handle_get(conn_t *conn, FileLock *map) {
         if (errno == EACCES || errno == EISDIR) {
             res = &RESPONSE_FORBIDDEN;
             audit(conn, res, uri, requestID, 0);
+            file_lock_read_unlock(map, uri);
+
+            pthread_mutex_unlock(&a->mutex);
+
             return;
         }
         //   b. Cannot find the file -- use RESPONSE_NOT_FOUND
         else if (errno == ENOENT) {
             res = &RESPONSE_NOT_FOUND;
             audit(conn, res, uri, requestID, 0);
+            file_lock_read_unlock(map, uri);
+
+            pthread_mutex_unlock(&a->mutex);
+
             return;
         }
         //   c. other error? -- use RESPONSE_INTERNAL_SERVER_ERROR
@@ -230,16 +252,27 @@ void handle_get(conn_t *conn, FileLock *map) {
         else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
             audit(conn, res, uri, requestID, 0);
+            file_lock_read_unlock(map, uri);
+
+            pthread_mutex_unlock(&a->mutex);
+
             return;
         }
     }
     // 2. Get the size of the file.
     // (hint: checkout the function fstat)!
-    file_lock_read_lock(map, uri);
+
+    //make rwlock and put into map
+    // pthread_mutex_lock(&a->mutex);
+
+    // file_lock_read_lock(map, uri);
     struct stat fileInfo;
     if (fstat(fd, &fileInfo) == -1) {
         audit(conn, res, uri, requestID, 0);
         file_lock_read_unlock(map, uri);
+        close(fd);
+        pthread_mutex_unlock(&a->mutex);
+
         return;
     }
     // Get the size of the file.
@@ -251,6 +284,9 @@ void handle_get(conn_t *conn, FileLock *map) {
         res = &RESPONSE_FORBIDDEN;
         audit(conn, res, uri, requestID, 0);
         file_lock_read_unlock(map, uri);
+        close(fd);
+        pthread_mutex_unlock(&a->mutex);
+
         return;
     }
     // uint16_t code = response_get_code(res);
@@ -258,15 +294,18 @@ void handle_get(conn_t *conn, FileLock *map) {
 
     // 4. Send the file
     // (hint: checkout the conn_send_file function!)
+    //lock
 
     res = conn_send_file(conn, fd, size);
     audit(conn, res, uri, requestID, 0);
     file_lock_read_unlock(map, uri);
     close(fd);
+    //unlock
+    pthread_mutex_unlock(&a->mutex);
 }
 
 void handle_unsupported(conn_t *conn) {
-    debug("handling unsupported request");
+    // debug("handling unsupported request");
     // char *uri = conn_get_uri(conn);
     // char *requestID = conn_get_header(conn, "Request-Id");
 
@@ -277,25 +316,29 @@ void handle_unsupported(conn_t *conn) {
 }
 
 void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
-
+    // UNUSED(a);
     char *uri = conn_get_uri(conn);
 
     char *requestID = conn_get_header(conn, "Request-Id");
     const Response_t *res = NULL;
-    debug("handling put request for %s", uri);
+    // debug("handling put request for %s", uri);
 
     // Check if file already exists before opening it.
     bool existed = access(uri, F_OK) == 0;
-    debug("%s existed? %d", uri, existed);
+    // debug("%s existed? %d", uri, existed);
     pthread_mutex_lock(&a->mutex);
+
+    file_lock_write_lock(map, uri);
     // Open the file..
-    int fd = open(uri, O_CREAT | O_WRONLY, 0600);
+    int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
     if (fd < 0) {
         debug("%s: %d", uri, errno);
         if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
             res = &RESPONSE_FORBIDDEN;
             conn_send_response(conn, res);
             fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+            // pthread_mutex_unlock(&a->mutex);
+            file_lock_write_unlock(map, uri);
             pthread_mutex_unlock(&a->mutex);
 
             return;
@@ -304,14 +347,16 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
             conn_send_response(conn, res);
             fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+            // pthread_mutex_unlock(&a->mutex);
+            file_lock_write_unlock(map, uri);
             pthread_mutex_unlock(&a->mutex);
 
             return;
         }
     }
-    file_lock_write_lock(map, uri);
-    ftruncate(fd, 0);
-    pthread_mutex_unlock(&a->mutex);
+    // file_lock_write_unlock(map, uri);
+
+    // ftruncate(fd, 0);
 
     res = conn_recv_file(conn, fd);
 
@@ -329,4 +374,13 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
     fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
     file_lock_write_unlock(map, uri);
     close(fd);
+    pthread_mutex_unlock(&a->mutex);
 }
+
+//questions: problem with deadlock or
+//[Errno 107] Transport endpoint is not connected
+//tips on where to find it
+//think its mainly in the get function or in FileLock
+//could be with readerlock/writerlock
+
+//check if locking correct spot
