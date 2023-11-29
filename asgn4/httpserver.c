@@ -209,14 +209,19 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
     bool existed = access(uri, F_OK) == 0;
     // int unlock = 0;
     // 1. Open the file.
+    // fprintf(stderr, "get lock, uri: %s, requestID: %s\n", uri, requestID);
     pthread_mutex_lock(&a->mutex);
+    // fprintf(stderr, "get file lock, uri: %s, requestID: %s\n", uri, requestID);
 
     file_lock_read_lock(map, uri);
     int fd = open(uri, O_RDONLY);
     if (!existed) {
         res = &RESPONSE_NOT_FOUND;
         audit(conn, res, uri, requestID, 0);
+        // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
         file_lock_read_unlock(map, uri);
+        // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
 
         pthread_mutex_unlock(&a->mutex);
 
@@ -231,7 +236,10 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
         if (errno == EACCES || errno == EISDIR) {
             res = &RESPONSE_FORBIDDEN;
             audit(conn, res, uri, requestID, 0);
+            // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             file_lock_read_unlock(map, uri);
+            // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
 
             pthread_mutex_unlock(&a->mutex);
 
@@ -241,7 +249,10 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
         else if (errno == ENOENT) {
             res = &RESPONSE_NOT_FOUND;
             audit(conn, res, uri, requestID, 0);
+            // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             file_lock_read_unlock(map, uri);
+            // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
 
             pthread_mutex_unlock(&a->mutex);
 
@@ -252,7 +263,10 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
         else {
             res = &RESPONSE_INTERNAL_SERVER_ERROR;
             audit(conn, res, uri, requestID, 0);
+            // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             file_lock_read_unlock(map, uri);
+            // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
 
             pthread_mutex_unlock(&a->mutex);
 
@@ -269,8 +283,12 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
     struct stat fileInfo;
     if (fstat(fd, &fileInfo) == -1) {
         audit(conn, res, uri, requestID, 0);
+        // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
         file_lock_read_unlock(map, uri);
         close(fd);
+        // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
+
         pthread_mutex_unlock(&a->mutex);
 
         return;
@@ -283,8 +301,12 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
     if (fileInfo.st_mode & S_IFDIR) {
         res = &RESPONSE_FORBIDDEN;
         audit(conn, res, uri, requestID, 0);
+        // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
         file_lock_read_unlock(map, uri);
         close(fd);
+        // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
+
         pthread_mutex_unlock(&a->mutex);
 
         return;
@@ -298,9 +320,13 @@ void handle_get(conn_t *conn, FileLock *map, Arguments *a) {
 
     res = conn_send_file(conn, fd, size);
     audit(conn, res, uri, requestID, 0);
+    // fprintf(stderr, "get file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
     file_lock_read_unlock(map, uri);
     close(fd);
     //unlock
+    // fprintf(stderr, "get unlock, uri: %s, requestID: %s\n", uri, requestID);
+
     pthread_mutex_unlock(&a->mutex);
 }
 
@@ -326,7 +352,10 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
     // Check if file already exists before opening it.
     bool existed = access(uri, F_OK) == 0;
     // debug("%s existed? %d", uri, existed);
+    // fprintf(stderr, "put lock, uri: %s, requestID: %s\n", uri, requestID);
+
     pthread_mutex_lock(&a->mutex);
+    // fprintf(stderr, "put file lock, uri: %s, requestID: %s\n", uri, requestID);
 
     file_lock_write_lock(map, uri);
     // Open the file..
@@ -338,7 +367,11 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
             conn_send_response(conn, res);
             fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
             // pthread_mutex_unlock(&a->mutex);
+            // fprintf(stderr, "put file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             file_lock_write_unlock(map, uri);
+            // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             pthread_mutex_unlock(&a->mutex);
 
             return;
@@ -348,7 +381,11 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
             conn_send_response(conn, res);
             fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
             // pthread_mutex_unlock(&a->mutex);
+            // fprintf(stderr, "put file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             file_lock_write_unlock(map, uri);
+            // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
+
             pthread_mutex_unlock(&a->mutex);
 
             return;
@@ -372,8 +409,12 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
     // audit(conn, res, uri, requestID, 1);
 
     fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+    // fprintf(stderr, "put file unlock, uri: %s, requestID: %s\n", uri, requestID);
+
     file_lock_write_unlock(map, uri);
     close(fd);
+    // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
+
     pthread_mutex_unlock(&a->mutex);
 }
 
