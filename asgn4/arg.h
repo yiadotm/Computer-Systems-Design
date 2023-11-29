@@ -1,6 +1,7 @@
 #pragma once
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "asgn2_helper_funcs.h"
 #include "queue.h"
 #include "queue.h"
@@ -15,6 +16,7 @@
 typedef struct {
     queue_t *q;
     FileLock *fi;
+    pthread_mutex_t mutex;
 } Arguments;
 
 Arguments *newArguments(queue_t *queue, FileLock *file);

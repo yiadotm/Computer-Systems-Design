@@ -19,7 +19,7 @@ FileLock *file_lock_new(size_t capacity) {
     }
     file_lock->rwlock = (rwlock_t **) malloc(sizeof(rwlock_t *) * capacity);
     for (size_t i = 0; i < capacity; i++) {
-        file_lock->rwlock[i] = rwlock_new(READERS, 0);
+        file_lock->rwlock[i] = rwlock_new(N_WAY, capacity);
     }
     int rc = pthread_mutex_init(&file_lock->mutex, NULL);
     assert(!rc);
