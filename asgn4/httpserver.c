@@ -58,7 +58,7 @@ void *workerThreads(void *arg) {
         queue_pop(q, (void **) &fd);
         // printf("fd: %d, success: %d\n", fd, b);
         handle_connection((int) fd, a->fi, a);
-        close(fd);
+        // close(fd);
 
         // }
     }
@@ -182,7 +182,7 @@ void handle_connection(int connfd, FileLock *map, Arguments *a) {
             handle_unsupported(conn);
         }
     }
-    // close(connfd);
+    close(connfd);
     conn_delete(&conn);
 }
 void audit(conn_t *conn, const Response_t *res, char *uri, char *requestID, int com) {
@@ -394,6 +394,7 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
     // file_lock_write_unlock(map, uri);
 
     // ftruncate(fd, 0);
+    pthread_mutex_unlock(&a->mutex);
 
     res = conn_recv_file(conn, fd);
 
@@ -415,7 +416,7 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
     close(fd);
     // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
 
-    pthread_mutex_unlock(&a->mutex);
+    // pthread_mutex_unlock(&a->mutex);
 }
 
 //questions: problem with deadlock or
