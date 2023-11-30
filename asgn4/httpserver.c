@@ -350,18 +350,18 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
     // debug("handling put request for %s", uri);
 
     // Check if file already exists before opening it.
-    bool existed = access(uri, F_OK) == 0;
     // debug("%s existed? %d", uri, existed);
     // fprintf(stderr, "put lock, uri: %s, requestID: %s\n", uri, requestID);
 
     pthread_mutex_lock(&a->mutex);
     // fprintf(stderr, "put file lock, uri: %s, requestID: %s\n", uri, requestID);
+    bool existed = access(uri, F_OK) == 0;
 
     file_lock_write_lock(map, uri);
     // Open the file..
     int fd = open(uri, O_CREAT | O_TRUNC | O_WRONLY, 0600);
     if (fd < 0) {
-        debug("%s: %d", uri, errno);
+        // debug("%s: %d", uri, errno);
         if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
             res = &RESPONSE_FORBIDDEN;
             conn_send_response(conn, res);
@@ -373,7 +373,7 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
             // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
 
             pthread_mutex_unlock(&a->mutex);
-
+            // close(fd);
             return;
 
         } else {
@@ -387,11 +387,11 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
             // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
 
             pthread_mutex_unlock(&a->mutex);
-
+            // close(fd);
             return;
         }
     }
-    // file_lock_write_unlock(map, uri);
+    // file_lock_write_lock(map, uri);
 
     // ftruncate(fd, 0);
     pthread_mutex_unlock(&a->mutex);
@@ -404,16 +404,23 @@ void handle_put(conn_t *conn, FileLock *map, Arguments *a) {
         res = &RESPONSE_CREATED;
     }
     // fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
-
+    close(fd);
     // out:
     conn_send_response(conn, res);
     // audit(conn, res, uri, requestID, 1);
-
+    // uint16_t code = 0;
+    // if (res == NULL) {
+    //     code = 200;
+    // } else {
+    //     code = response_get_code(res);
+    // }
+    // fprintf(stderr, "PUT,/%s,%d,%s\n", uri, code, requestID);
     fprintf(stderr, "PUT,/%s,%d,%s\n", uri, response_get_code(res), requestID);
+
     // fprintf(stderr, "put file unlock, uri: %s, requestID: %s\n", uri, requestID);
 
     file_lock_write_unlock(map, uri);
-    close(fd);
+
     // fprintf(stderr, "put unlock, uri: %s, requestID: %s\n", uri, requestID);
 
     // pthread_mutex_unlock(&a->mutex);
