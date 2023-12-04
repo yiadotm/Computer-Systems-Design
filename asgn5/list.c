@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h>
 #include "list.h"
 // structs --------------------------------------------------------------------
 // private Node type
@@ -29,7 +30,7 @@ typedef struct ListObj {
 Node newNode(ListElement data) {
     Node N = malloc(sizeof(NodeObj));
     assert(N != NULL);
-    N->data = data;
+    N->data = strdup(data);
     N->next = N->prev = NULL;
     return (N);
 }
@@ -150,11 +151,13 @@ bool isEmpty(List L) {
 int isInList(List L, const char *item) {
     Node N = L->front;
     while (N != NULL) {
-        if (N->data == item) {
+        fprintf(stderr, "Comparing: %s and %s\n", N->data, item);
+        if (strcmp(N->data, item) == 0) {
             return 1;
         }
         N = N->next;
     }
+    freeNode(&N);
     return 0;
 }
 
@@ -179,7 +182,7 @@ void set(List L, ListElement x) {
         printf("List Error: calling set() with out of bounds parameter.\n");
         exit(EXIT_FAILURE);
     }
-    L->cursor->data = x;
+    L->cursor->data = strdup(x);
 }
 
 // moveFront()

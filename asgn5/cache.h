@@ -28,6 +28,10 @@ struct Cache {
 
 void initializeCache(struct Cache *cache, int size, int policy);
 
+void printRemovedCache(struct Cache *cache);
+
+void printCache(struct Cache *cache);
+
 int isInCache(struct Cache *cache, const char *item);
 
 // int isInSet(struct Cache *cache, const char *item);
@@ -35,6 +39,10 @@ int isInCache(struct Cache *cache, const char *item);
 void evictFIFO(struct Cache *cache);
 
 void evictLRU(struct Cache *cache);
+
+void swapLRU(struct Cache *cache, const char *item);
+
+void evictClock(struct Cache *cache, const char *item);
 
 void addToCache(struct Cache *cache, const char *item);
 

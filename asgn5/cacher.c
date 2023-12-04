@@ -56,7 +56,6 @@ int main(int argc, char *argv[]) {
     capacityMisses = cache.CA;
     // Print summary
     printf("%d %d\n", compulsoryMisses, capacityMisses);
-
     freeCache(&cache);
     return 0;
 }
