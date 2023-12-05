@@ -151,7 +151,7 @@ bool isEmpty(List L) {
 int isInList(List L, const char *item) {
     Node N = L->front;
     while (N != NULL) {
-        fprintf(stderr, "Comparing: %s and %s\n", N->data, item);
+        // fprintf(stderr, "Comparing: %s and %s\n", N->data, item);
         if (strcmp(N->data, item) == 0) {
             return 1;
         }
