@@ -10,6 +10,7 @@
 #define INVALID_POLICY -1
 struct Node {
     char *data;
+    int age;
     struct Node *next;
 };
 
@@ -18,7 +19,7 @@ struct Cache {
     struct Node *head;
     struct Node *tail;
     List removed;
-
+    int currentAge;
     int size;
     int currentSize;
     int CO;
@@ -34,7 +35,9 @@ void printCache(struct Cache *cache);
 
 int isInCache(struct Cache *cache, const char *item);
 
+struct Node *findYoungestAge(struct Cache *cache);
 // int isInSet(struct Cache *cache, const char *item);
+void updateNodeAge(struct Cache *cache, const char *item);
 
 void evictFIFO(struct Cache *cache);
 
@@ -42,7 +45,7 @@ void evictLRU(struct Cache *cache);
 
 void swapLRU(struct Cache *cache, const char *item);
 
-void evictClock(struct Cache *cache, const char *item);
+void evictClock(struct Cache *cache);
 
 void addToCache(struct Cache *cache, const char *item);
 

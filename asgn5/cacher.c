@@ -44,18 +44,19 @@ int main(int argc, char *argv[]) {
     initializeCache(&cache, size, policy);
 
     char buffer[1024];
-    int compulsoryMisses = 0;
-    int capacityMisses = 0;
+    // int compulsoryMisses = 0;
+    // int capacityMisses = 0;
     // Read from stdin until EOF
     while (fgets(buffer, sizeof(buffer), stdin) != NULL) {
         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline character
         handleCacheAccess(&cache, buffer);
     }
     // Calculate misses
-    compulsoryMisses = cache.CO;
-    capacityMisses = cache.CA;
+    // compulsoryMisses = cache.CO;
+    // capacityMisses = cache.CA;
     // Print summary
-    printf("%d %d\n", compulsoryMisses, capacityMisses);
+    // printf("%d %d\n", compulsoryMisses, capacityMisses);
+    printf("%d %d\n", cache.CO, cache.CA);
     freeCache(&cache);
     return 0;
 }
