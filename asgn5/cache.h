@@ -19,13 +19,16 @@ struct Cache {
     struct Node *head;
     struct Node *tail;
     List removed;
-    int currentAge;
     int size;
     int currentSize;
     int CO;
     int CA;
     int policy;
 };
+
+void pushNode(struct Cache *cache, struct Node *node);
+
+struct Node *popNode(struct Cache *cache);
 
 void initializeCache(struct Cache *cache, int size, int policy);
 
@@ -35,7 +38,6 @@ void printCache(struct Cache *cache);
 
 int isInCache(struct Cache *cache, const char *item);
 
-struct Node *findYoungestAge(struct Cache *cache);
 // int isInSet(struct Cache *cache, const char *item);
 void updateNodeAge(struct Cache *cache, const char *item);
 

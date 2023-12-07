@@ -1,7 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <string.h>
 #include "cache.h"
+
+void pushNode(struct Cache *cache, struct Node *node) {
+    if (node && cache) {
+        cache->tail->next = node;
+        cache->tail = node;
+    }
+    cache->currentSize++;
+}
+
+struct Node *popNode(struct Cache *cache) {
+    struct Node *pop = NULL;
+    if (cache) {
+        pop = cache->head;
+        cache->head = cache->head->next;
+    }
+    cache->currentSize--;
+    return pop;
+}
 
 // Function to initialize the cache
 void initializeCache(struct Cache *cache, int size, int policy) {
@@ -9,7 +28,6 @@ void initializeCache(struct Cache *cache, int size, int policy) {
     cache->tail = NULL;
     cache->policy = policy;
     cache->size = size;
-    cache->currentAge = 0;
     cache->currentSize = 0;
     cache->removed = newList();
     cache->CO = 0;
@@ -44,24 +62,12 @@ int isInCache(struct Cache *cache, const char *item) {
     return 0;
 }
 
-struct Node *findYoungestAge(struct Cache *cache) {
-    struct Node *current = cache->head;
-    struct Node *youngest = cache->head;
-    while (current != NULL) {
-        if (current->age < youngest->age) {
-            youngest = current;
-        }
-        current = current->next;
-    }
-    return youngest;
-}
-
 void updateNodeAge(struct Cache *cache, const char *item) {
     struct Node *updateNode = cache->head;
     while (strcmp(updateNode->data, item) != 0) {
         updateNode = updateNode->next;
     }
-    updateNode->age = cache->currentAge;
+    updateNode->age = 1;
 }
 
 void evictFIFO(struct Cache *cache) {
@@ -133,21 +139,17 @@ void evictClock(struct Cache *cache) {
         // Cache is empty, nothing to evict
         return;
     }
-    struct Node *prev = NULL;
     struct Node *current = cache->head;
     // fprintf(stderr, "youngest age: %d\n", current->age);
     while (current != NULL && current->age > 0) {
         current->age = 0;
-        prev = current;
-        if (current->next == cache->tail) {
-            current = cache->head;
-            prev = NULL;
-        } else {
-            current = current->next;
-        }
+        struct Node *pop = popNode(cache);
+        assert(current == pop);
+        pushNode(cache, pop);
     }
+    current = popNode(cache);
+    assert(current->age == 0);
 
-    cache->currentAge = 0;
     fprintf(stderr, "item in evict: %s\n", current->data);
     //evict item
     if (!isInList(cache->removed, current->data)) {
@@ -155,25 +157,13 @@ void evictClock(struct Cache *cache) {
         fprintf(stderr, "add to removed\n");
         // printRemovedCache(cache);
     }
-    // fprintf(stderr, "prev: %s, cur-next: %s\n", prev->data, current->next->data);
 
-    if (prev != NULL) {
-        prev->next = current->next;
-    }
-    // fprintf(stderr, "prev: %s, cur-next: %s\n", prev->data, current->next->data);
-    else if (current == cache->head) {
-        cache->head = current->next;
-    }
     // fprintf(stderr, "cache after remove %s, ", current->data);
 
     // current = current->next;
     free(current->data);
     free(current);
-    // current = NULL;
-    // struct Node *temp = cache->head;
-    // cache->head = temp->next;
-    // free(temp->data);
-    // free(temp);
+
     cache->currentSize--;
     // printCache(cache);
 }
@@ -187,7 +177,7 @@ void addToCache(struct Cache *cache, const char *item) {
 
     struct Node *newNode = (struct Node *) malloc(sizeof(struct Node));
     newNode->data = strdup(item);
-    newNode->age = cache->currentAge;
+    newNode->age = 0;
     newNode->next = NULL;
 
     if (cache->currentSize == 0) {
@@ -229,7 +219,7 @@ void handleCacheAccess(struct Cache *cache, const char *item) {
             swapLRU(cache, item);
         }
         if (cache->policy == C) {
-            cache->currentAge++;
+
             updateNodeAge(cache, item);
         }
         printf("HIT\n");
