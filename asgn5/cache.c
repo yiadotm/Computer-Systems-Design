@@ -119,19 +119,17 @@ void swapLRU(struct Cache *cache, const char *item) {
             // Cache is empty or has only one node, no need to switch
             return;
         }
+
+        // Swap the data of the head and tail nodes
         const char *temp = strdup(cache->head->data);
+        free(cache->head->data); // Free the previous data of the head
         cache->head->data = strdup(cache->tail->data);
+        free(cache->tail->data); // Free the previous data of the tail
         cache->tail->data = strdup(temp);
+        free((void *) temp);
 
         return;
     }
-    // Update pointers to move the node containing the item to the tail
-    // if (prev != NULL) {
-    prev->next = current->next;
-    // }
-    cache->tail->next = current;
-    current->next = NULL;
-    cache->tail = current;
 }
 
 void evictClock(struct Cache *cache) {
@@ -150,11 +148,11 @@ void evictClock(struct Cache *cache) {
     current = popNode(cache);
     assert(current->age == 0);
 
-    fprintf(stderr, "item in evict: %s\n", current->data);
+    // fprintf(stderr, "item in evict: %s\n", current->data);
     //evict item
     if (!isInList(cache->removed, current->data)) {
         append(cache->removed, current->data);
-        fprintf(stderr, "add to removed\n");
+        // fprintf(stderr, "add to removed\n");
         // printRemovedCache(cache);
     }
 
@@ -208,9 +206,9 @@ void addToCache(struct Cache *cache, const char *item) {
 
 // Function to handle cache access and print HIT or MISS
 void handleCacheAccess(struct Cache *cache, const char *item) {
-    fprintf(stderr, "item: %s\n", item);
-    printCache(cache);
-    printRemovedCache(cache);
+    // fprintf(stderr, "item: %s\n", item);
+    // printCache(cache);
+    // printRemovedCache(cache);
 
     if (isInCache(cache, item)) {
         if (cache->policy == L) {
@@ -223,7 +221,7 @@ void handleCacheAccess(struct Cache *cache, const char *item) {
             updateNodeAge(cache, item);
         }
         printf("HIT\n");
-        fprintf(stderr, "HIT\n");
+        // fprintf(stderr, "HIT\n");
 
         // fprintf(stderr, "item: %s, CO: %d\n", item, cache->CO);
     } else {
@@ -231,20 +229,20 @@ void handleCacheAccess(struct Cache *cache, const char *item) {
         if (isInList(cache->removed, item) && !isInCache(cache, item)) {
 
             cache->CA++;
-            fprintf(stderr, "CA: %d\n", cache->CA);
+            // fprintf(stderr, "CA: %d\n", cache->CA);
 
         } else if (!isInList(cache->removed, item) && !isInCache(cache, item)) {
             cache->CO++;
-            fprintf(stderr, "CO: %d\n", cache->CO);
+            // fprintf(stderr, "CO: %d\n", cache->CO);
         }
         // fprintf(stderr, "item in list: %s\n", item);
         // printRemovedCache(cache);
 
         printf("MISS\n");
         addToCache(cache, item);
-        fprintf(stderr, "MISS\n");
+        // fprintf(stderr, "MISS\n");
     }
-    fprintf(stderr, "\n");
+    // fprintf(stderr, "\n");
 }
 
 // Function to free memory allocated for the cache

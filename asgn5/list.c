@@ -39,6 +39,7 @@ Node newNode(ListElement data) {
 // Frees heap memory pointed to by *pN, sets *pN to NULL.
 void freeNode(Node *pN) {
     if (pN != NULL && *pN != NULL) {
+        free((void *) (*pN)->data);
         free(*pN);
         *pN = NULL;
     }
